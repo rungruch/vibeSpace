@@ -3,7 +3,7 @@ import { nanoid } from 'nanoid'
 import { message, Input, Select, Button, Card, Typography, Space, Tag, Row, Col, Collapse, Tooltip, Switch, InputNumber, Modal, Table } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined, EyeOutlined, SettingOutlined, FileTextOutlined, QuestionCircleOutlined, LinkOutlined } from '@ant-design/icons';
 import SurveyPreview from './SurveyPreview.jsx';
-import { FormCreate, SurveyData, SurveyDataSettings } from '../interface.ts';
+import { FormCreate, SurveyData, SurveyDataSettings } from '../App/Interfaces/interface.ts';
 import { FormTypes, FormVisible, FormMode } from '../enum.ts';
 import StarsIcon from '@mui/icons-material/Stars';
 

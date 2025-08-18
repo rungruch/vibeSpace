@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { uploadFile } from '../../api/file.ts';
 import { useUserContext } from '../App/context/userContext.tsx';
-import { FileSubmit } from '../interface.ts';
+import { FileSubmit } from '../App/Interfaces/interface.ts';
 import { useTheme } from '../../context/themeContext.js';
 
 interface FileUploadProps {

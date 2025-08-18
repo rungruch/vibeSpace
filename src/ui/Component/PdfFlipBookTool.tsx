@@ -1,17 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { uploadFile } from '../../api/file.ts';
-import { FileSubmit } from '../interface.ts';
+import { FileSubmit } from '../App/Interfaces/interface.ts';
 import { createRoot } from 'react-dom/client';
 import HTMLFlipBook from 'react-pageflip';
 import styled from 'styled-components';
-
-// TODOS fix width freeze render
 
 // Minimal Type declarations for PDF.js (avoid broad any where possible)
 declare global {
   interface Window {
     pdfjsLib?: {
-      getDocument: (url: string) => { promise: Promise<PDFDocumentProxy> };
+      getDocument: (url: string) => { promise: Promise<PDFDocumentProxy>};
       GlobalWorkerOptions: { workerSrc: string };
     };
   }
@@ -121,16 +119,15 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
       const page = await pdfInstance.getPage(1);
       const baseViewport = page.getViewport({ scale: 1 });
       const containerWidth = (wrapperRef.current?.clientWidth || 500);
-      // Clamp width to reasonable max to avoid gigantic canvases
-      const maxLogicalWidth = 1200; // arbitrary safety cap
+      const maxLogicalWidth = 1200;
       const targetWidth = Math.min(containerWidth, maxLogicalWidth);
       const scale = targetWidth / baseViewport.width;
       const scaledViewport = page.getViewport({ scale });
       setDimensions((prev) => {
-        // Only update if changed to avoid unnecessary renders
+        // Only update if width or height changes by more than 400px
         if (
-          Math.abs(prev.width - scaledViewport.width) > 2 ||
-          Math.abs(prev.height - scaledViewport.height) > 2 ||
+          Math.abs(prev.width - scaledViewport.width) > 400 ||
+          Math.abs(prev.height - scaledViewport.height) > 400 ||
           Math.abs(prev.scale - scale) > 0.01
         ) {
           return { width: scaledViewport.width, height: scaledViewport.height, scale };
@@ -379,7 +376,7 @@ const Page = React.forwardRef<HTMLDivElement, { pageNumber: number; pdf: PDFDocu
         const viewport = page.getViewport({ scale });
         const canvas = canvasRef.current;
         if (canvas) {
-          const context = canvas.getContext('2d');
+            const context = canvas.getContext('2d', { willReadFrequently: true });
           if (context) {
             canvas.height = viewport.height;
             canvas.width = viewport.width;

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { ELEARNING_URL } from '../constants/endpoints';
-import { FileSubmit } from '../ui/interface';
+import { FileSubmit } from '../ui/App/Interfaces/interface';
 
 const BASE_URL = ELEARNING_URL || 'http://localhost:4080/elearning';
 

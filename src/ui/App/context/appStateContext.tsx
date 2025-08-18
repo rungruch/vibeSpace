@@ -5,7 +5,7 @@ import { CloseOutlined } from "@ant-design/icons";
 import Loading from "../loading";
 import { useTheme } from "../../../context/themeContext";
 import { createUser } from "../../../api/users.ts";
-import { CreateUser } from "../../interface";
+import { CreateUser } from "../Interfaces/interface.ts";
 
 const { Text } = Typography;
 

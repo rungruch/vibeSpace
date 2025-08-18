@@ -10,7 +10,7 @@ import {
   LOGIN_URL,
   MASTER_NANO_USER_INFO_URL,
 } from "../../../constants/endpoints";
-import { CurrentUser } from "../../interface";
+import { CurrentUser } from "../Interfaces/interface.ts";
 import axios from "axios";
 import { useAppState } from "./appStateContext.tsx";
 import { fetchUserByEmpoyeeID } from "../../../api/users.ts";

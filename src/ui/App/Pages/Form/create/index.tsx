@@ -2,7 +2,7 @@ import React from 'react';
 import FormEditor from '../../../../Component/FormEditor.tsx';
 import { useUserContext } from '../../../context/userContext.tsx';
 import { createForm } from '../../../../../api/forms';
-import { SurveyData, SurveyDataSettings, FormCreate } from '../../../../interface';
+import { SurveyData, SurveyDataSettings, FormCreate } from '../../../Interfaces/interface.ts';
 import { FormTypes, FormVisible } from '../../../../enum.ts';
 import { nanoid } from 'nanoid';
 import { useNavigate } from 'react-router-dom';

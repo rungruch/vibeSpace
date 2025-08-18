@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import FormEditor from '../../../../Component/FormEditor.tsx';
 import { useUserContext } from '../../../context/userContext.tsx';
 import { fetchFormById, updateForm } from '../../../../../api/forms';
-import { SurveyData, SurveyDataSettings, FormCreate } from '../../../../interface';
+import { SurveyData, SurveyDataSettings, FormCreate } from '../../../Interfaces/interface.ts';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FormMode } from '../../../../enum.ts';
 import NoMatch from '../../../no-match.js';

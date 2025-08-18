@@ -2,7 +2,7 @@ import React, {useEffect, Suspense} from "react";
 import { Form, Input, Switch, Card, Row, Col, Typography, Space, Divider, notification, message } from 'antd';
 import { SaveOutlined} from '@ant-design/icons';
 const PageCreator = React.lazy(() => import(/* webpackChunkName: "editor" */ "../../../../Component/PageCreator.tsx"));
-import { PageSettings, PageUpdate } from "../../../../interface.ts";
+import { PageSettings, PageUpdate } from "../../../Interfaces/interface.ts";
 import { EditorMode } from "../../../../enum.ts";
 import { useTheme } from "../../../../../context/themeContext.js";
 import { useUserContext } from '../../../context/userContext.tsx';
@@ -62,9 +62,6 @@ export default function PageEdit() {
           title: pageData.title,
           slug: pageData.slug,
         });
-        if (pageData.is_active < 1) {
-          setNotFound(true);
-        }
       } catch (error) {
         console.error("Error fetching page:", error);
         setNotFound(true);

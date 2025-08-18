@@ -5,7 +5,7 @@ const SurveyPreviewResults = lazy(() => import("../../../Component/SurveyPreview
 import { fetchFormById, fetchFormBySlug } from "../../../../api/forms.js";
 import NoMatch from "../../no-match.js";
 import { formClosedJson, FormTypes, formNotAcceptJson } from "../../../enum.ts";
-import { FormCreate, FormSubmit, QuizSubmit } from "../../../interface.ts";
+import { FormCreate, FormSubmit, QuizSubmit } from "../../Interfaces/interface.ts";
 import { useUserContext } from "../../context/userContext.tsx";
 import { Button } from "antd";
 import { formSubmit, getUserFormResponsesCount } from "../../../../api/forms.js";

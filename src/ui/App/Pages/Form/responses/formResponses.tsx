@@ -4,7 +4,7 @@ import {
   FormSubmit,
   QuizSubmit,
   SurveyData,
-} from "../../../../interface.ts";
+} from "../../../Interfaces/interface.ts";
 import { useUserContext } from "../../../context/userContext.tsx";
 import { Button, Collapse, Table } from "antd";
 import { useAppState } from "../../../context/appStateContext.tsx";

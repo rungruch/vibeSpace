@@ -1,4 +1,4 @@
-import { FormTypes } from "./enum";
+import { FormTypes } from "../../enum";
 /*
     USER 
 */

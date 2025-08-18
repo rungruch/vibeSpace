@@ -6,7 +6,7 @@ import { EMPLOYEE_IMAGE_URL } from '../../constants/endpoints';
 import Logo_White from '../../../assets/images/logo_icon_white.png';
 import { useUserContext } from './context/userContext.tsx';
 import { useTheme } from '../../context/themeContext';
-import type { CurrentUser } from '../interface';
+import type { CurrentUser } from './Interfaces/interface.ts';
 import { PERMISSIONS, getUserDisplayRole } from '../../utils/permissions.ts';
 
 // Import Material-UI icons
@@ -18,6 +18,7 @@ import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import SettingsIcon from '@mui/icons-material/Settings';
+import SchoolIcon from '@mui/icons-material/School';
 
 // Types
 interface MenuItem {
@@ -61,6 +62,11 @@ const menuItems: MenuItem[] = [
     icon: <DashboardIcon />, 
     label: 'คอร์สของฉัน',
     permissions: [] 
+  },
+  {
+    key: '/course/manage',
+    icon: <SchoolIcon />,
+    label: 'จัดการหลักสูตร',
   },
   { 
     key: '/course/report', 

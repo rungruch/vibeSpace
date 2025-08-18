@@ -13,7 +13,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import Logo_White from '../../../assets/images/logo_icon.png';
 import { useUserContext } from './context/userContext.tsx';
-import type { CurrentUser } from '../interface';
+import type { CurrentUser } from './Interfaces/interface.ts';
 import ThemeToggle from '../Component/ThemeToggle.tsx';
 import { useTheme } from '../../context/themeContext.js';
 

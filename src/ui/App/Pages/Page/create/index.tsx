@@ -2,7 +2,7 @@ import React, { Suspense } from "react";
 import { Form, Input, Switch, Card, Row, Col, Typography, Space, Divider, notification, message } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 const PageCreator = React.lazy(() => import(/* webpackChunkName: "editor" */ "../../../../Component/PageCreator.tsx"));
-import { PageSettings } from "../../../../interface.ts";
+import { PageSettings } from "../../../Interfaces/interface.ts";
 import { EditorMode } from "../../../../enum.ts";
 import { createPage } from "../../../../../api/pages.ts";
 import { useTheme } from "../../../../../context/themeContext.js";

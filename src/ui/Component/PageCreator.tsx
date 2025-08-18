@@ -2,13 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 // EditorJS + tools will be dynamically imported to reduce initial bundle size
 // (All previous static imports replaced below inside useEffect)
 import { uploadFile } from "../../api/file.ts";
-import { FileSubmit } from "../interface.ts";
+import { FileSubmit } from "../App/Interfaces/interface.ts";
 import VideoTool from "./VideoTool.tsx";
 import DocumentTool from "./DocumentTool.tsx";
 import PdfFlipBookTool from "./PdfFlipBookTool.tsx";
 import { useUserContext } from "../App/context/userContext.tsx";
 import Loading from "./Loading.tsx";
-import { PostSettings, PageSettings } from "../interface.ts";
+import { PostSettings, PageSettings } from "../App/Interfaces/interface.ts";
 import { EditorMode } from "../enum.ts";
 import { useTheme } from "../../context/themeContext.js";
 import { useDelayedRender } from "./DelayRender.ts";
@@ -83,6 +83,17 @@ export default function PageCreator({ mode, settings, onSave, content }: PageCre
 
         let editorInstance = new EditorJS({
           readOnly: previewEnabled,
+          onReady: async () => {
+            // // // Only toggle readOnly if the method exists and not in read-only mode
+            // if (
+            //   editorInstance &&
+            //   editorInstance.readOnly &&
+            //   typeof editorInstance.readOnly.toggle === "function"
+            // ) {
+            //   await editorInstance.readOnly.toggle(false);
+            // }
+            setIsReady(true);
+          },
           holder: "editorjs",
           minHeight: mode === EditorMode.ReadOnly ? 300 : 300,
           placeholder: "Let's write an awesome story!",
@@ -156,7 +167,6 @@ export default function PageCreator({ mode, settings, onSave, content }: PageCre
             pdfFlipBook: { class: PdfFlipBookTool, config: { userId: user.id } }
           },
           data: parseContent(content),
-          onReady: () => setIsReady(true),
           onChange: async () => {
             // existing onChange logic below remains unchanged
           }

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { uploadFile } from '../../api/file.ts';
-import { FileSubmit } from '../interface.ts';
+import { FileSubmit } from '../App/Interfaces/interface.ts';
 let DocViewerMod: any = null;
 async function ensureDocViewer() {
   if (DocViewerMod) return DocViewerMod;

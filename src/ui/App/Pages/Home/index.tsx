@@ -5,7 +5,7 @@ import {  CalendarOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../../../context/themeContext.js";
 import { fetchAllPosts, fetchAllPostsCategory } from "../../../../api/posts.ts";
-import { PostsData, HeroSectionSettings, MainPageSettings } from "../../../interface.ts";
+import { PostsData, HeroSectionSettings, MainPageSettings } from "../../Interfaces/interface.ts";
 import dayjs from "dayjs";
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import { getSettings } from "../../../../api/setting.ts";

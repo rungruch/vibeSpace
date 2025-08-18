@@ -4,7 +4,7 @@ import { useTheme } from '../../context/themeContext.js';
 import { SaveOutlined, PlusOutlined, DeleteOutlined} from '@ant-design/icons';
 import { message } from 'antd';
 import { Input, Button } from 'antd';
-import { HeroSectionSettings, HeroSectionData} from '../interface.ts';
+import { HeroSectionSettings, HeroSectionData} from '../App/Interfaces/interface.ts';
 import SelectPage from './SelectPage.tsx';
 import SelectFile from './SelectFile.tsx';
 import { SelectFileFilter, SettingsGroup } from '../enum.ts';

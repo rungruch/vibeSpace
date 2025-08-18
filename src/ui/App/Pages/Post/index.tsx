@@ -4,7 +4,7 @@ import { SearchOutlined, ClearOutlined, CalendarOutlined } from "@ant-design/ico
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../../../context/themeContext.js";
 import { fetchAllPosts, fetchAllPostsCategory } from "../../../../api/posts.ts";
-import { PostsData } from "../../../interface.ts";
+import { PostsData } from "../../Interfaces/interface.ts";
 import dayjs from "dayjs";
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 
@@ -31,13 +31,16 @@ export default function PostsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
 
+
+  // TODOS use filter and pagination on db side
+
   // Fetch data on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         const [postsData, categoriesData] = await Promise.all([
-          fetchAllPosts(false, 10, null),
+          fetchAllPosts(true, 300, null),
           fetchAllPostsCategory()
         ]);
 
