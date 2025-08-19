@@ -46,4 +46,20 @@ export interface ElearningLessons {
     media_file_id : string;
     quiz_id : string;
     order_index : number;
-    }
+}
+
+// For creating a lesson
+export type ElearningLessonsCreate = Omit<ElearningLessons, 'id' | 'module_id'>;
+
+// For creating a module
+// It will contain the lessons to be created.
+export type ElearningModuleCreate = Omit<ElearningModule, 'id' | 'course_id'> & {
+    lessons: ElearningLessonsCreate[];
+};
+
+// For creating a course, we omit all server-generated fields.
+// It will contain the modules to be created.
+export type ElearningCoursesCreate = Omit<Elearning, 'id' | 'rating' | 'created_at' | 'updated_at' | 'updated_by' | 'category'> & {
+    modules: ElearningModuleCreate[];
+    category: string[]; // keep a list of category id only for create Elearning_CoursesCategoryList
+};

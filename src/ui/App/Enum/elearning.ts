@@ -1,7 +1,7 @@
 export enum ElearningVisibility {
-    General = "public",
-    Password = "private",
-    InviteOnly = "unlisted"
+    General = "general",
+    Password = "password",
+    InviteOnly = "invite"
 }
 
 export enum ElearningMediaType {

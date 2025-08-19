@@ -11,7 +11,7 @@ import { EditorMode } from "../enum.ts";
 const { Text } = Typography;
 
 interface EditorViewerProps {
-  SlugProps: string | null;
+  SlugProps?: string | null;
 }
 
 
