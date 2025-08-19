@@ -118,9 +118,14 @@ export default function CoursesCreate() {
       ...settings,
     };
 
-    // minimal validation
-    if (!currentSettings.title || !currentSettings.slug) {
-      message.error("Please fill in the title and slug.");
+    // minimal validation: require title, slug, description (or editor content), and cover image
+    if (
+      !currentSettings.title ||
+      !currentSettings.slug ||
+      !(content || currentSettings.description) ||
+      !currentSettings.cover_image_url
+    ) {
+      message.error("Please fill in title, slug, description and cover image.");
       setIsLoading(false);
       return;
     }
@@ -456,7 +461,11 @@ export default function CoursesCreate() {
                 </Form.Item>
 
                 {/* Course specific fields */}
-                <Form.Item label="คำอธิบาย (Description)" name="description">
+                <Form.Item
+                  label="คำอธิบาย (Description)"
+                  name="description"
+                  rules={[{ required: true, message: "Please enter a description" }]}
+                >
                   <Input.TextArea rows={3} placeholder="Short description..." maxLength={250} />
                 </Form.Item>
 
@@ -625,7 +634,11 @@ export default function CoursesCreate() {
                   />
                 </Form.Item>
 
-                <Form.Item label="ภาพหน้าปก" name="cover_image_url">
+                <Form.Item
+                  label="ภาพหน้าปก"
+                  name="cover_image_url"
+                  rules={[{ required: true, message: "Please select or enter a cover image" }]}
+                >
                   <div>
                     <Input
                       placeholder="เลือกไฟล์หรือวางลิงก์ภาพ"
@@ -665,7 +678,7 @@ export default function CoursesCreate() {
             </Card>
           </Col>
 
-          {/* Editor Panel */}
+          {/* Second Panel */}
           <Col xs={24} lg={16}>
             <Card
               style={{
@@ -678,7 +691,9 @@ export default function CoursesCreate() {
               styles={{ body: { padding: "24px" } }}
               loading={isLoading}
             >
-              {/* <Suspense fallback={<div>Loading editor...</div>}>
+                
+              {/* TODOS add content (module and lessons settings) 
+               <Suspense fallback={<div>Loading editor...</div>}>
                 <PageCreator
                   mode={EditorMode.Page}
                   settings={{ ...(courseSettings as any), content: courseContent }}

@@ -46,6 +46,7 @@ export interface ElearningLessons {
     media_file_id : string;
     quiz_id : string;
     order_index : number;
+    min_complete_minute : number;
 }
 
 // For creating a lesson

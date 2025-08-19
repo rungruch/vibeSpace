@@ -21,6 +21,7 @@ const PageEdit = lazy(() => import("./ui/App/Pages/Page/edit/index.tsx"));
 const PostCreate = lazy(() => import("./ui/App/Pages/Post/create/index.tsx"));
 const EditorViewer = lazy(() => import("./ui/Component/EditorViewer.tsx"));
 const PostPage = lazy(() => import("./ui/App/Pages/Post/index.tsx"));
+const CourseCreate = lazy(() => import("./ui/App/Pages/Elearning/create/index.tsx"));
 
 // Context
 import { UserContextProvider } from "./ui/App/context/userContext.tsx";
@@ -84,6 +85,7 @@ const AppRoutes = () => {
             <Route path="/page/:slug" element={<EditorViewer />} />
             <Route path="/post/:slug" element={<EditorViewer />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/course/create" element={<CourseCreate />} />
             <Route path="*" element={<NoMatch />} />
           </Routes>
         </Suspense>
