@@ -37,11 +37,14 @@ import { useUserContext } from "../../../context/userContext.tsx";
 import Loading from "../../../../Component/Loading.tsx";
 import { useNavigate } from "react-router-dom";
 import SelectFile from "../../../../Component/SelectFile.tsx";
+import SelectForm from "../../../../Component/SelectForm.tsx";
+import SelectPage from "../../../../Component/SelectPage.tsx";
 import { SelectFileFilter } from "../../../../enum.ts";
 // removed unused useParams/isValidUuid for course create
 import NoMatch from "../../../no-match.js";
 import { fetchAllCoursesCategory, createCourses, createCourseCategory, deleteCourseCategory } from "../../../../../api/elearning.ts";
 import { Elearning, ElearningCoursesCreate, ElearningModuleCreate, ElearningLessonsCreate, ElearningModule, ElearningLessons } from "../../../Interfaces/elearning.ts";
+import { ElearningMediaType } from "../../../Enum/elearning.ts";
 
 const { Text } = Typography;
 
@@ -78,8 +81,19 @@ export default function CoursesCreate() {
   const [enableEditCategories, setEnableEditCategories] = React.useState(false);
   const [isCreatingCategory, setIsCreatingCategory] = React.useState(false);
   const [selectFileModal, setSelectFileModal] = useState(false);
-  const [courseContent, setCourseContent] = useState("");
   const [notFound, setNotFound] = useState(false);
+  const truncate = (s: string | undefined, n = 40) => {
+    if (!s) return "";
+    return s.length > n ? s.slice(0, n) + "..." : s;
+  };
+  // lesson edit modal state
+  const [lessonModalOpen, setLessonModalOpen] = useState(false);
+  const [lessonEditModuleIndex, setLessonEditModuleIndex] = useState<number | null>(null);
+  const [lessonEditLessonIndex, setLessonEditLessonIndex] = useState<number | null>(null);
+  const [showSelectPage, setShowSelectPage] = useState(false);
+  const [showSelectFileForLesson, setShowSelectFileForLesson] = useState(false);
+  const [showSelectFormForLesson, setShowSelectFormForLesson] = useState(false);
+  // local modules state lives inside courseSettings.modules but keep a typed alias
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -109,7 +123,7 @@ export default function CoursesCreate() {
     }
   };
 
-  const handleSave = async (settings: any, content: string) => {
+  const handleSave = async (settings: any) => {
     setIsLoading(true);
 
     // Merge settings from form and any passed-in settings
@@ -122,12 +136,48 @@ export default function CoursesCreate() {
     if (
       !currentSettings.title ||
       !currentSettings.slug ||
-      !(content || currentSettings.description) ||
+      !(currentSettings.description) ||
       !currentSettings.cover_image_url
     ) {
       message.error("Please fill in title, slug, description and cover image.");
       setIsLoading(false);
       return;
+    }
+
+    // per-lesson validation: ensure required selector exists depending on lesson type
+    const modulesToCheck = currentSettings.modules || [];
+    for (let mi = 0; mi < modulesToCheck.length; mi++) {
+      const mod = modulesToCheck[mi];
+      const lessons = mod.lessons || [];
+      for (let li = 0; li < lessons.length; li++) {
+        const lesson = lessons[li] as any;
+        // min_complete_minute sanity
+        if (lesson.min_complete_minute != null && lesson.min_complete_minute < 0) {
+          message.error(`Module ${mi + 1} Lesson ${li + 1}: min_complete_minute must be >= 0`);
+          setIsLoading(false);
+          return;
+        }
+
+        if (lesson.type === ElearningMediaType.Editor) {
+          if (!lesson.page_slug) {
+            message.error(`Module ${mi + 1} Lesson ${li + 1}: please select a Page for Editor lessons.`);
+            setIsLoading(false);
+            return;
+          }
+        } else if (lesson.type === ElearningMediaType.Quiz) {
+          if (!lesson.quiz_id) {
+            message.error(`Module ${mi + 1} Lesson ${li + 1}: please select a Quiz/Form for Quiz lessons.`);
+            setIsLoading(false);
+            return;
+          }
+        } else {
+          if (!lesson.media_file_url) {
+            message.error(`Module ${mi + 1} Lesson ${li + 1}: please select a Media file for this lesson type.`);
+            setIsLoading(false);
+            return;
+          }
+        }
+      }
     }
 
     // normalize dates from DatePicker (moment) to JS Date
@@ -145,26 +195,25 @@ export default function CoursesCreate() {
 
     const courseData: ElearningCoursesCreate = {
       is_active: !!currentSettings.is_active,
-      slug: currentSettings.slug,
+      slug: currentSettings.slug || "",
       pre_requisites: currentSettings.pre_requisites || "",
-      title: currentSettings.title,
-      description: content || currentSettings.description || "",
+      title: currentSettings.title || "",
+      description: currentSettings.description || "",
       objective: currentSettings.objective || "",
-      duration_minute: currentSettings.duration_minute || 0,
+      duration_minute: Number(currentSettings.duration_minute) || 0,
       certificate: !!currentSettings.certificate,
       visibility:
         (currentSettings.visibility as ElearningVisibility) ||
         ElearningVisibility.General,
-      rating: 0, // omitted by create type but include a placeholder if needed by API
       password: currentSettings.password || "",
-      start_date: startDate,
-      end_date: endDate,
-      enroll_duration_day: currentSettings.enroll_duration_day || 0,
+      start_date: startDate || null,
+      end_date: endDate || null,
+      enroll_duration_day: Number(currentSettings.enroll_duration_day) || 0,
       created_by: user.id,
       cover_image_url: currentSettings.cover_image_url || "",
-      modules: currentSettings.modules || [],
-      category: selectedCategories,
-    } as any;
+      modules: (currentSettings.modules || []),
+      category: selectedCategories || [],
+    };
 
     try {
       await createCourses(courseData);
@@ -174,7 +223,7 @@ export default function CoursesCreate() {
         description: "Course has been created successfully.",
         duration: 4,
       });
-      navigate(`/elearning`);
+      navigate(`/course/manage`);
     } catch (error: any) {
       console.error("Error creating course:", error);
 
@@ -226,6 +275,266 @@ export default function CoursesCreate() {
     } finally {
       setIsCreatingCategory(false);
     }
+  };
+
+  // Module & Lesson helpers
+  const addModule = () => {
+    setCourseSettings((prev) => {
+      const modules = (prev.modules || []) as ElearningModuleCreate[];
+      const newModule: ElearningModuleCreate = {
+        title: `Module ${modules.length + 1}`,
+        order_index: modules.length + 1,
+        lessons: [],
+      };
+      return { ...prev, modules: [...modules, newModule] };
+    });
+  };
+
+  const removeModule = (index: number) => {
+    setCourseSettings((prev) => {
+      const modules = (prev.modules || []).slice();
+      modules.splice(index, 1);
+      // reindex order
+      modules.forEach((m, i) => (m.order_index = i + 1));
+      return { ...prev, modules };
+    });
+  };
+
+  const updateModuleField = (index: number, field: keyof ElearningModuleCreate, value: any) => {
+    setCourseSettings((prev) => {
+      const modules = (prev.modules || []).slice();
+      const module = { ...modules[index] } as any;
+      module[field] = value;
+      modules[index] = module;
+      return { ...prev, modules };
+    });
+  };
+
+  const addLesson = (moduleIndex: number) => {
+    setCourseSettings((prev) => {
+      const modules = (prev.modules || []).slice();
+      const module = { ...modules[moduleIndex] } as ElearningModuleCreate;
+      const lessons = module.lessons || [];
+      const newLesson: ElearningLessonsCreate = {
+        title: `Lesson ${module.order_index}.${lessons.length + 1}`,
+        type: ElearningMediaType.Editor,
+        page_slug: null,
+        media_file_url: null,
+        quiz_id: null,
+        order_index: lessons.length + 1,
+        min_complete_minute: 0,
+      } as any;
+      module.lessons = [...lessons, newLesson];
+      modules[moduleIndex] = module;
+      return { ...prev, modules };
+    });
+  };
+
+  const removeLesson = (moduleIndex: number, lessonIndex: number) => {
+    setCourseSettings((prev) => {
+      const modules = (prev.modules || []).slice();
+      const module = { ...modules[moduleIndex] } as ElearningModuleCreate;
+      const lessons = (module.lessons || []).slice();
+      lessons.splice(lessonIndex, 1);
+      lessons.forEach((l, i) => (l.order_index = i + 1));
+      module.lessons = lessons;
+      modules[moduleIndex] = module;
+      return { ...prev, modules };
+    });
+  };
+
+  const updateLessonField = (moduleIndex: number, lessonIndex: number, field: keyof ElearningLessonsCreate, value: any) => {
+    setCourseSettings((prev) => {
+      const modules = (prev.modules || []).slice();
+      const module = { ...modules[moduleIndex] } as ElearningModuleCreate;
+      const lessons = (module.lessons || []).slice();
+      const lesson = { ...lessons[lessonIndex] } as any;
+      lesson[field] = value;
+      lessons[lessonIndex] = lesson;
+      module.lessons = lessons;
+      modules[moduleIndex] = module;
+      return { ...prev, modules };
+    });
+  };
+
+  // Drag & drop state/refs for modules and lessons
+  const draggingModuleIndex = React.useRef<number | null>(null);
+  const draggingLesson = React.useRef<{ moduleIndex: number; lessonIndex: number } | null>(null);
+
+  // Modules drag handlers
+  const onModuleDragStart = (e: React.DragEvent, index: number) => {
+    draggingModuleIndex.current = index;
+    try { e.dataTransfer?.setData('text/plain', 'module'); } catch (_) {}
+  };
+
+  const onModuleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const onModuleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    const from = draggingModuleIndex.current;
+    if (from === null || from === undefined) return;
+    if (from === targetIndex) return;
+    setCourseSettings((prev) => {
+      const modules = (prev.modules || []).slice();
+      const [moved] = modules.splice(from, 1);
+      modules.splice(targetIndex, 0, moved);
+      modules.forEach((m: any, i: number) => (m.order_index = i + 1));
+      return { ...prev, modules };
+    });
+    draggingModuleIndex.current = null;
+  };
+
+  // Lessons drag handlers (support move within and between modules)
+  const onLessonDragStart = (e: React.DragEvent, moduleIndex: number, lessonIndex: number) => {
+    draggingLesson.current = { moduleIndex, lessonIndex };
+    try { e.dataTransfer?.setData('text/plain', 'lesson'); } catch (_) {}
+  };
+
+  const onLessonDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const onLessonDrop = (e: React.DragEvent, targetModuleIndex: number, targetLessonIndex: number) => {
+    e.preventDefault();
+    const src = draggingLesson.current;
+    if (!src) return;
+    setCourseSettings((prev) => {
+      const modules = (prev.modules || []).slice();
+
+      // remove from source
+      const srcModule = { ...(modules[src.moduleIndex] || {}) } as any;
+      const srcLessons = (srcModule.lessons || []).slice();
+      const [moved] = srcLessons.splice(src.lessonIndex, 1);
+      srcModule.lessons = srcLessons;
+      modules[src.moduleIndex] = srcModule;
+
+      // insert into target
+      const targetModule = { ...(modules[targetModuleIndex] || {}) } as any;
+      const targetLessons = (targetModule.lessons || []).slice();
+      // If dropping after last item, allow append
+      const insertIndex = Math.min(Math.max(0, targetLessonIndex), targetLessons.length);
+      targetLessons.splice(insertIndex, 0, moved);
+      targetModule.lessons = targetLessons;
+      modules[targetModuleIndex] = targetModule;
+
+      // reindex lessons order_index for affected modules
+      [src.moduleIndex, targetModuleIndex].forEach((mi) => {
+        const lessons = (modules[mi]?.lessons || []) as any[];
+        lessons.forEach((l, i) => (l.order_index = i + 1));
+      });
+
+      return { ...prev, modules };
+    });
+    draggingLesson.current = null;
+  };
+
+  // Drop to append to module (drop on the module area)
+  const onModuleLessonsDrop = (e: React.DragEvent, targetModuleIndex: number) => {
+    e.preventDefault();
+    const src = draggingLesson.current;
+    if (!src) return;
+    setCourseSettings((prev) => {
+      const modules = (prev.modules || []).slice();
+
+      // remove from source
+      const srcModule = { ...(modules[src.moduleIndex] || {}) } as any;
+      const srcLessons = (srcModule.lessons || []).slice();
+      const [moved] = srcLessons.splice(src.lessonIndex, 1);
+      srcModule.lessons = srcLessons;
+      modules[src.moduleIndex] = srcModule;
+
+      // append to target module
+      const targetModule = { ...(modules[targetModuleIndex] || {}) } as any;
+      const targetLessons = (targetModule.lessons || []).slice();
+      targetLessons.push(moved);
+      targetModule.lessons = targetLessons;
+      modules[targetModuleIndex] = targetModule;
+
+      // reindex lessons order_index for affected modules
+      [src.moduleIndex, targetModuleIndex].forEach((mi) => {
+        const lessons = (modules[mi]?.lessons || []) as any[];
+        lessons.forEach((l, i) => (l.order_index = i + 1));
+      });
+
+      return { ...prev, modules };
+    });
+    draggingLesson.current = null;
+  };
+
+  // Ensure only the relevant lesson fields are present depending on media type
+  const handleLessonTypeChange = (moduleIndex: number, lessonIndex: number, val: ElearningMediaType) => {
+    setCourseSettings((prev) => {
+      const modules = (prev.modules || []).slice();
+      const module = { ...modules[moduleIndex] } as ElearningModuleCreate;
+      const lessons = (module.lessons || []).slice();
+      const lesson = { ...lessons[lessonIndex] } as any;
+      lesson.type = val;
+      if (val === ElearningMediaType.Editor) {
+        // Editor uses only page_slug
+        lesson.page_slug = lesson.page_slug || null;
+        lesson.media_file_url = null;
+        lesson.quiz_id = null;
+      } else if (val === ElearningMediaType.Quiz) {
+        // Quiz uses only quiz_id
+        lesson.quiz_id = lesson.quiz_id || null;
+        lesson.page_slug = null;
+        lesson.media_file_url = null;
+      } else {
+        // Video/PDF/etc use media_file_url
+        lesson.media_file_url = lesson.media_file_url || null;
+        lesson.page_slug = null;
+        lesson.quiz_id = null;
+      }
+      lessons[lessonIndex] = lesson;
+      module.lessons = lessons;
+      modules[moduleIndex] = module;
+      return { ...prev, modules };
+    });
+  };
+
+  const openLessonModal = (moduleIndex: number, lessonIndex: number) => {
+    setLessonEditModuleIndex(moduleIndex);
+    setLessonEditLessonIndex(lessonIndex);
+    setLessonModalOpen(true);
+  };
+
+  const closeLessonModal = () => {
+    setLessonModalOpen(false);
+    setLessonEditModuleIndex(null);
+    setLessonEditLessonIndex(null);
+  };
+
+  // Save click handler that validates the form and invokes handleSave
+  const onSaveClick = async () => {
+    try {
+      const values = await form.validateFields();
+      // merge form values into courseSettings so UI reflects them
+      setCourseSettings((prev) => ({ ...prev, ...values }));
+      await handleSave(values);
+    } catch (err) {
+      // validation error: AntD will mark fields; show message
+      message.error('Please fix form validation errors before saving.');
+    }
+  };
+
+  const handleSelectPageForLesson = (routePath: string) => {
+    if (lessonEditModuleIndex === null || lessonEditLessonIndex === null) return;
+  updateLessonField(lessonEditModuleIndex, lessonEditLessonIndex, 'page_slug' as any, routePath.split('/').pop()); // return only slug
+    setShowSelectPage(false);
+  };
+
+  const handleSelectFileForLesson = (staticUrl: string) => {
+    if (lessonEditModuleIndex === null || lessonEditLessonIndex === null) return;
+  updateLessonField(lessonEditModuleIndex, lessonEditLessonIndex, 'media_file_url' as any, staticUrl);
+    setShowSelectFileForLesson(false);
+  };
+
+  const handleSelectFormForLesson = (id: string) => {
+    if (lessonEditModuleIndex === null || lessonEditLessonIndex === null) return;
+    updateLessonField(lessonEditModuleIndex, lessonEditLessonIndex, 'quiz_id' as any, id);
+    setShowSelectFormForLesson(false);
   };
 
   const handleDeleteCategory = async (
@@ -286,15 +595,8 @@ export default function CoursesCreate() {
   }
 
   return (
-    <div
-      style={{
-        backgroundColor: isDark ? "#27272a" : "#f5f5f5",
-        minHeight: "100vh",
-        padding: "24px",
-        transition: "background-color 0.3s ease",
-      }}
-    >
-      <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
+    <div className={`min-h-screen p-6 transition-colors ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
+      <div className="max-w-[1400px] mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div>
             <h2
@@ -313,6 +615,11 @@ export default function CoursesCreate() {
             >
               สร้างและจัดการเนื้อหา
             </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button type="primary" icon={<SaveOutlined />} onClick={onSaveClick}>
+              Save
+            </Button>
           </div>
         </div>
 
@@ -473,7 +780,7 @@ export default function CoursesCreate() {
                   <Input.TextArea rows={2} placeholder="Objectives..." maxLength={250} />
                 </Form.Item>
 
-                // TODOS Create course select component to get a courses id and input to this input
+                {/* TODOS: Create course select component to get a courses id and input to this input */}
                 <Form.Item label="วิชาพื้นฐาน (Pre-requisites)" name="pre_requisites">
                   <Input.TextArea rows={2} placeholder="Pre-requisites..." />
                 </Form.Item>
@@ -512,13 +819,7 @@ export default function CoursesCreate() {
 
                 <Form.Item
                   label={
-                    <div
-                      style={{
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        width: "100%",
-                      }}
-                    >
+                    <div className="flex justify-between items-center w-full">
                       <Text
                         strong
                         style={{ color: isDark ? "#fff" : "#262626" }}
@@ -530,12 +831,7 @@ export default function CoursesCreate() {
                         size="small"
                         icon={<PlusOutlined />}
                         onClick={() => setIsCreateModalOpen(true)}
-                        style={{
-                          color: isDark ? "#40a9ff" : "#1890ff",
-                          padding: "0 4px",
-                          height: "auto",
-                          marginLeft: "10px",
-                        }}
+                        className={`${isDark ? 'text-blue-400' : 'text-blue-600'} p-0`}
                       >
                         Add Category
                       </Button>
@@ -544,15 +840,8 @@ export default function CoursesCreate() {
                         type="link"
                         size="small"
                         icon={<EditOutlined />}
-                        onClick={() =>
-                          setEnableEditCategories((previous) => !previous)
-                        }
-                        style={{
-                          color: isDark ? "#40a9ff" : "#1890ff",
-                          padding: "0 4px",
-                          height: "auto",
-                          marginLeft: "10px",
-                        }}
+                        onClick={() => setEnableEditCategories((previous) => !previous)}
+                        className={`${isDark ? 'text-blue-400' : 'text-blue-600'} p-0`}
                       >
                         Edit Category
                       </Button>
@@ -686,21 +975,72 @@ export default function CoursesCreate() {
                 boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
                 border: "1px solid #e8e8f0",
                 minHeight: "600px",
-                display: "none"
               }}
               styles={{ body: { padding: "24px" } }}
               loading={isLoading}
             >
                 
-              {/* TODOS add content (module and lessons settings) 
-               <Suspense fallback={<div>Loading editor...</div>}>
-                <PageCreator
-                  mode={EditorMode.Page}
-                  settings={{ ...(courseSettings as any), content: courseContent }}
-                  onSave={handleSave}
-                  content={courseContent}
-                />
-              </Suspense> */}
+              {/* Module & Lesson editor UI */}
+              <div>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                  <Button onClick={() => addModule()} icon={<PlusOutlined />}>add Module</Button>
+                </div>
+
+                {(courseSettings.modules || []).map((mod: any, mi: number) => {
+                  return (
+                    <div key={mi}
+                      draggable
+                      onDragStart={(e) => onModuleDragStart(e, mi)}
+                      onDragOver={onModuleDragOver}
+                      onDrop={(e) => onModuleDrop(e, mi)}
+                      className={`border rounded-lg p-3 mb-3 ${isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'}`}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Input
+                          value={mod.title}
+                          onChange={(e) => updateModuleField(mi, 'title', e.target.value)}
+                          style={{ flex: 1, marginRight: 8 }}
+                        />
+                        <Button danger onClick={() => removeModule(mi)}>Remove Module</Button>
+                      </div>
+
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                          <Button onClick={() => addLesson(mi)}>add Lesson</Button>
+                        </div>
+
+                        <div onDragOver={onLessonDragOver} onDrop={(e) => onModuleLessonsDrop(e, mi)}>
+                          {(mod.lessons || []).map((les: any, li: number) => {
+                            return (
+                              <div key={li}
+                                draggable
+                                onDragStart={(e) => onLessonDragStart(e, mi, li)}
+                                onDragOver={onLessonDragOver}
+                                onDrop={(e) => onLessonDrop(e, mi, li)}
+                                className={`flex items-center gap-2 p-2 rounded-md mb-2 ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                                <div style={{ width: 28 }}>{`${mi + 1}.${li + 1}`}</div>
+                                <Input value={les.title} onChange={(e) => updateLessonField(mi, li, 'title', e.target.value)} />
+                                <Select value={les.type} onChange={(val) => handleLessonTypeChange(mi, li, val as ElearningMediaType)} style={{ width: 140 }}>
+                                  <Select.Option value={ElearningMediaType.Editor}>Editor</Select.Option>
+                                  <Select.Option value={ElearningMediaType.Video}>Video</Select.Option>
+                                  <Select.Option value={ElearningMediaType.PDF}>PDF</Select.Option>
+                                  <Select.Option value={ElearningMediaType.Quiz}>Quiz</Select.Option>
+                                </Select>
+                                <InputNumber value={les.min_complete_minute} min={0} onChange={(v) => updateLessonField(mi, li, 'min_complete_minute', v || 0)} style={{ width: 120 }} />
+                                <div style={{ display: 'flex', flexDirection: 'column', minWidth: 220 }}>
+                                  <div style={{ fontSize: 12, color: isDark ? '#ddd' : '#444' }}>{les.type === ElearningMediaType.Editor ? `Page: ${truncate(les.page_slug)}` : les.type === ElearningMediaType.Quiz ? `Quiz: ${truncate(les.quiz_id)}` : `File: ${truncate(les.media_file_url)}`}</div>
+                                  <div style={{ fontSize: 12, color: isDark ? '#bbb' : '#666' }}>Min min: {les.min_complete_minute ?? 0}</div>
+                                </div>
+                                <Button style={{ padding: '0 16px' }} onClick={() => openLessonModal(mi, li)} icon={<EditOutlined />} />
+                                <Button style={{ padding: '0 16px' }} danger onClick={() => removeLesson(mi, li)} icon={<DeleteOutlined />} />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </Card>
           </Col>
         </Row>
@@ -739,11 +1079,85 @@ export default function CoursesCreate() {
           </Form>
         </Modal>
 
+        {/* Lesson Edit Modal */}
+        <Modal
+          title="Edit Lesson"
+          open={lessonModalOpen}
+          onCancel={closeLessonModal}
+          footer={null}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Show selector based on lesson type */}
+            {lessonEditModuleIndex !== null && lessonEditLessonIndex !== null && (() => {
+              const lesson = ((courseSettings.modules || [])[lessonEditModuleIndex]?.lessons || [])[lessonEditLessonIndex] || {} as any;
+              if (lesson.type === ElearningMediaType.Editor) {
+                return <Button onClick={() => setShowSelectPage(true)}>Select Page</Button>;
+              } else if (lesson.type === ElearningMediaType.Quiz) {
+                return <Button onClick={() => setShowSelectFormForLesson(true)}>Select Quiz/Form</Button>;
+              } else {
+                return <Button onClick={() => setShowSelectFileForLesson(true)}>Select Media File</Button>;
+              }
+            })()}
+
+            <div>
+              <label style={{ display: 'block', marginBottom: 6 }}>Minimum complete minutes</label>
+              <InputNumber
+                min={0}
+                style={{ width: '100%' }}
+                value={lessonEditModuleIndex !== null && lessonEditLessonIndex !== null ? (((courseSettings.modules || [])[lessonEditModuleIndex]?.lessons || [])[lessonEditLessonIndex]?.min_complete_minute ?? 0) : 0}
+                onChange={(v) => {
+                  if (lessonEditModuleIndex === null || lessonEditLessonIndex === null) return;
+                  updateLessonField(lessonEditModuleIndex, lessonEditLessonIndex, 'min_complete_minute' as any, v || 0);
+                }}
+              />
+            </div>
+
+            {process.env.DEV_MODE === "development" && (
+              <div>
+                <p style={{ marginBottom: 6 }}>Preview values (will be saved when modal closed):</p>
+                <pre style={{ whiteSpace: 'pre-wrap', background: '#f7f7f7', padding: 8, borderRadius: 6 }}>
+                  {JSON.stringify(
+                    lessonEditModuleIndex !== null && lessonEditLessonIndex !== null
+                      ? ((courseSettings.modules || [])[lessonEditModuleIndex]?.lessons || [])[lessonEditLessonIndex]
+                      : {},
+                    null,
+                    2
+                  )}
+                </pre>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <Button onClick={closeLessonModal}>Close</Button>
+            </div>
+          </div>
+        </Modal>
+
         <SelectFile
           visible={selectFileModal}
           onClose={() => setSelectFileModal(false)}
           onSelect={handleSelectFile}
           filterType={SelectFileFilter.IMAGE}
+        />
+
+        {/* Selectors for lesson modal */}
+        <SelectPage
+          visible={showSelectPage}
+          onClose={() => setShowSelectPage(false)}
+          onSelect={handleSelectPageForLesson}
+        />
+
+        <SelectFile
+          visible={showSelectFileForLesson}
+          onClose={() => setShowSelectFileForLesson(false)}
+          onSelect={handleSelectFileForLesson}
+          filterType={SelectFileFilter.ALL}
+        />
+
+        <SelectForm
+          visible={showSelectFormForLesson}
+          onClose={() => setShowSelectFormForLesson(false)}
+          onSelect={handleSelectFormForLesson}
         />
       </div>
     </div>
