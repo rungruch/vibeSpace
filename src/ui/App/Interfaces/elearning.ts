@@ -42,8 +42,8 @@ export interface ElearningLessons {
     module_id : string;
     title : string;
     type : ElearningMediaType;
-    page_id : string;
-    media_file_id : string;
+    page_slug : string;
+    media_file_url : string;
     quiz_id : string;
     order_index : number;
     min_complete_minute : number;

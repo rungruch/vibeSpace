@@ -404,7 +404,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
   const { isDark } = useTheme();
 
   // State management
-  const [collapsed, setCollapsed] = useState<boolean>(isTablet); // Collapsed by default on tablet
+  const [collapsed, setCollapsed] = useState<boolean>(true); // Collapsed by default on tablet
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false);
 
   // Get visible menu items based on permissions
