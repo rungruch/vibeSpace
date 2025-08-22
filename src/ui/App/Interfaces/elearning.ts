@@ -64,3 +64,8 @@ export type ElearningCoursesCreate = Omit<Elearning, 'id' | 'rating' | 'created_
     modules: ElearningModuleCreate[];
     category: string[]; // keep a list of category id only for create Elearning_CoursesCategoryList
 };
+
+export type ElearningCourseGet = Elearning & {
+    modules: ElearningModuleCreate[] | string ;
+    is_enrolled: boolean;
+};
