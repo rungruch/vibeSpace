@@ -45,3 +45,12 @@ export async function createCourses(courseData) {
     throw error;
   }
 }
+
+export async function getCourseBySlug(slug) {
+  try {
+    const response = await axios.get(`${BASE_URL}/courses/slug/${slug}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}

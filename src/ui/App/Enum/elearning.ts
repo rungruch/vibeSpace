@@ -10,3 +10,10 @@ export enum ElearningMediaType {
     PDF = "pdf",
     Quiz = "quiz"
 }
+
+export enum ElearningEnrollmentsStatus {
+    Enrolled = "enrolled",
+    Completed = "completed",
+    InProgress = "in_progress",
+    Expired = "expired"
+}
