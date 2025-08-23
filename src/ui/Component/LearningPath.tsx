@@ -46,8 +46,8 @@ export default function LearningPath({ modulesRaw, isDark = false, onLessonSelec
     .sort((a: any, b: any) => (a.module_order || 0) - (b.module_order || 0));
   }, [modulesRaw]);
 
-  const [activeModule, setActiveModule] = useState(interactive ? 0 : -1);
-  const [activeLesson, setActiveLesson] = useState(interactive ? 0 : -1);
+  const [activeModule, setActiveModule] = useState(-1);
+  const [activeLesson, setActiveLesson] = useState(-1);
 
   if (!modules || modules.length === 0) {
     return (
@@ -67,7 +67,7 @@ export default function LearningPath({ modulesRaw, isDark = false, onLessonSelec
   return (
     <div className="flex flex-col gap-4">
       {/* Lessons steps stacked by module */}
-      <div className={`w-full p-2 rounded-lg ${isDark ? 'bg-zinc-800' : 'bg-white'}`}>
+      <div className={`w-full p-2 rounded-lg`}>
         {modules.map((m: any, mi: number) => (
           <div key={m.module_id || mi} className="mb-6">
             <div className={`text-sm font-medium mb-2 ${isDark ? 'text-zinc-200' : 'text-gray-800'}`}>
@@ -75,6 +75,7 @@ export default function LearningPath({ modulesRaw, isDark = false, onLessonSelec
             </div>
 
             <Steps
+              direction="vertical"
               size="small"
               current={mi === activeModule ? activeLesson : -1}
               onChange={(stepIndex) => {

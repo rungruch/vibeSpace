@@ -12,6 +12,8 @@ import { getSettings } from "../../../../api/setting.ts";
 import { SettingsGroup } from "../../../enum.ts";
 import EditorViewer from "../../../Component/EditorViewer.tsx";
 
+//TODOS add fallback when cannot get ant herosections and page settings, (show home page ony and one static herosection)
+
 interface Category {
   id: string;
   name: string;
