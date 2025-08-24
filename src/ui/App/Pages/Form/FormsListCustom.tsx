@@ -10,7 +10,7 @@ import {
   BarChartOutlined,
   LinkOutlined
 } from '@ant-design/icons';
-import { useTheme } from '../../../../context/themeContext';
+import { useTheme } from '../../../../context/themeContext.js';
 import { fetchAllForms, deleteForm } from '../../../../api/forms';
 import { useUserContext } from '../../context/userContext.tsx';
 import { useNavigate } from 'react-router-dom';

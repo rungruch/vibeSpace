@@ -3,6 +3,8 @@ const webpack = require('webpack')
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
+const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const mode = 'development'
 const title = 'Nano OK E-Learning'
 
@@ -19,53 +21,92 @@ module.exports = {
         runtimeChunk: 'single',
         splitChunks: {
             chunks: 'all',
+            // encourage splitting very large vendor modules into smaller chunks during dev too
+            maxSize: 256000,
             cacheGroups: {
                 react: {
                     test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
                     name: 'react',
-                    priority: 50,
-                    enforce: true,
-                },
-                survey: {
-                    test: /[\\/]node_modules[\\/](survey-core|survey-react-ui)[\\/]/,
-                    name: 'survey',
-                    priority: 45,
-                    enforce: true,
-                },
-                mui: {
-                    test: /[\\/]node_modules[\\/]@mui[\\/](?!x-charts)/,
-                    name: 'mui',
-                    priority: 42,
-                    enforce: true,
-                },
-                antd: {
-                    test: /[\\/]node_modules[\\/]antd[\\/]/,
-                    name: 'antd',
-                    priority: 41,
+                    priority: 70,
                     enforce: true,
                 },
                 charts: {
                     test: /[\\/]node_modules[\\/]@mui[\\/]x-charts[\\/]/,
                     name: 'charts',
-                    priority: 40,
+                    priority: 60,
+                    enforce: true,
+                },
+                pdfjs: {
+                    test: /[\\/]node_modules[\\/]pdfjs-dist[\\/]/,
+                    name: 'pdfjs',
+                    priority: 59,
+                },
+                framer: {
+                    test: /[\\/]node_modules[\\/]framer-motion[\\/]/,
+                    name: 'framer',
+                    priority: 58,
+                },
+                survey: {
+                    test: /[\\/]node_modules[\\/](survey-core|survey-react-ui)[\\/]/,
+                    name: 'survey',
+                    priority: 55,
+                },
+                mui: {
+                    test: /[\\/]node_modules[\\/]@mui[\\/](?!x-charts)/,
+                    name: 'mui',
+                    priority: 54,
+                    enforce: true,
+                },
+                antd: {
+                    test: /[\\/]node_modules[\\/](antd|@ant-design|rc-.*)[\\/]/,
+                    name: 'antd',
+                    priority: 53,
                     enforce: true,
                 },
                 editor: {
                     test: /[\\/]node_modules[\\/]@editorjs[\\/]/,
                     name: 'editor',
-                    priority: 38,
-                    enforce: true,
+                    priority: 52,
                 },
                 xlsxlib: {
                     test: /[\\/]node_modules[\\/](xlsx)[\\/]/,
                     name: 'xlsx-lib',
-                    priority: 37,
-                    enforce: true,
+                    priority: 51,
                 },
                 docviewer: {
                     test: /[\\/]node_modules[\\/]@cyntler[\\/]react-doc-viewer[\\/]/,
                     name: 'doc-viewer-lib',
-                    priority: 36,
+                    priority: 50,
+                },
+                // isolate large rc-* helper packages if present
+                'rc-picker': {
+                    test: /[\\/]node_modules[\\/]rc-picker[\\/]/,
+                    name: 'rc-picker',
+                    priority: 49,
+                    enforce: true,
+                },
+                'rc-field-form': {
+                    test: /[\\/]node_modules[\\/]rc-field-form[\\/]/,
+                    name: 'rc-field-form',
+                    priority: 48,
+                    enforce: true,
+                },
+                'rc-table': {
+                    test: /[\\/]node_modules[\\/]rc-table[\\/]/,
+                    name: 'rc-table',
+                    priority: 47,
+                    enforce: true,
+                },
+                'rc-select': {
+                    test: /[\\/]node_modules[\\/]rc-select[\\/]/,
+                    name: 'rc-select',
+                    priority: 46,
+                    enforce: true,
+                },
+                'rc-virtual-list': {
+                    test: /[\\/]node_modules[\\/]rc-virtual-list[\\/]/,
+                    name: 'rc-virtual-list',
+                    priority: 45,
                     enforce: true,
                 },
                 vendors: {
@@ -103,7 +144,15 @@ module.exports = {
                 // Creates `style` nodes from JS strings
                 "style-loader",
                 // Translates CSS into CommonJS
-                "css-loader",
+                {
+                    loader: "css-loader",
+                    options: {
+                        modules: {
+                            auto: true, // Enable modules for files with .module. in the name
+                            localIdentName: '[name]__[local]___[hash:base64:5]'
+                        }
+                    }
+                },
                 // Process Tailwind CSS
                 "postcss-loader",
                 // Compiles Sass to CSS
@@ -128,6 +177,15 @@ module.exports = {
     },
     plugins: [
         new CleanWebpackPlugin(),
+            new ForkTsCheckerWebpackPlugin({
+                async: true,
+                typescript: {
+                    diagnosticOptions: {
+                        semantic: true,
+                        syntactic: true
+                    }
+                }
+            }),
         new webpack.ProvidePlugin({
             Buffer: ['buffer', 'Buffer'],
             process: 'process/browser'
@@ -143,6 +201,14 @@ module.exports = {
                 'BASE_NAME': JSON.stringify(''),
                 'DEV_MODE': JSON.stringify(mode)
             }
+        }),
+        new CopyWebpackPlugin({
+            patterns: [
+                {
+                    from: 'node_modules/pdfjs-dist/build/pdf.worker.min.mjs',
+                    to: 'pdf.worker.min.js',
+                },
+            ],
         })
     ],
     devServer: {

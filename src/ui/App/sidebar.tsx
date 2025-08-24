@@ -5,7 +5,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { EMPLOYEE_IMAGE_URL } from '../../constants/endpoints';
 import Logo_White from '../../../assets/images/logo_icon_white.png';
 import { useUserContext } from './context/userContext.tsx';
-import { useTheme } from '../../context/themeContext';
+import { useTheme } from '../../context/themeContext.js';
 import type { CurrentUser } from './Interfaces/interface.ts';
 import { PERMISSIONS, getUserDisplayRole } from '../../utils/permissions.ts';
 

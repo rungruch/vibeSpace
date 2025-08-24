@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Result, Button, Space, Typography, Alert, Modal } from "antd";
 import { CloseOutlined } from "@ant-design/icons";
 import Loading from "../loading";
-import { useTheme } from "../../../context/themeContext";
+import { useTheme } from "../../../context/themeContext.js";
 import { createUser } from "../../../api/users.ts";
 import { CreateUser } from "../Interfaces/interface.ts";
 

@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { DoubleBorderLightPanelless , DoubleBorderDarkPanelless} from 'survey-core/themes';
-import { useTheme } from '../../context/themeContext';
+import { useTheme } from '../../context/themeContext.js';
 
 // Lazy component factory: loads SurveyJS libs & CSS in parallel, returns a render component
 const LazySurveyImpl = React.lazy(async () => {
