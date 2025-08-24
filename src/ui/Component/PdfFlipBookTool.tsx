@@ -3,7 +3,6 @@ import { uploadFile } from '../../api/file.ts';
 import { FileSubmit } from '../App/Interfaces/interface.ts';
 import { createRoot } from 'react-dom/client';
 import HTMLFlipBook from 'react-pageflip';
-import styled from 'styled-components';
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Set up the worker using local file (copied by webpack)
@@ -20,27 +19,8 @@ interface PDFDocumentProxy {
   getPage: (pageNumber: number) => Promise<PDFPageProxy>;
 }
 
-const FlipBookWrapper = styled.div`
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  .flip-book {
-    box-shadow: 0 0 20px rgba(0,0,0,0.2);
-  }
-  .page {
-    background: white;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-  }
-  canvas {
-    max-width: 100%;
-    max-height: 100%;
-  }
-`;
+// Using Tailwind utility classes instead of styled-components.
+// The wrapper and page styles are applied inline via className where needed.
 
 interface PdfFlipBookToolData {
   file?: {
@@ -63,6 +43,8 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
   const [pdfUrl, setPdfUrl] = useState(data.file?.url || data.url || '');
   const [dimensions, setDimensions] = useState({ width: 500, height: 700, scale: 1 });
   const [urlInput, setUrlInput] = useState('');
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -174,11 +156,17 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      setSelectedFileName(file.name);
+      setUploading(true);
       try {
         const submit: FileSubmit = { type: file.type || 'application/pdf', uploaded_by: config.userId || 'anonymous', uploaded_at: new Date() };
         const res = await uploadFile(file, submit);
         const newUrl = res.staticUrl || res.url || '';
-        if (newUrl) { setPdfUrl(newUrl); onDataChange({ ...data, file: { url: newUrl }, url: newUrl }); }
+        if (newUrl) {
+          setPdfUrl(newUrl);
+          onDataChange({ ...data, file: { url: newUrl }, url: newUrl });
+        }
+        setUploading(false);
       } catch (e) { console.error('PDF upload failed', e); }
     }
   };
@@ -199,119 +187,88 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
     return pages;
   }, [numPages, pdf, dimensions.scale]);
 
-  if (readOnly) {
-    return (
-      <div ref={wrapperRef} style={{ width: '100%', height: '100%' }}>
-        <FlipBookWrapper>
-          {error && <p style={{ color: 'red' }}>{error}</p>}
-          {(!error && pdf && numPages > 0) && (
-            <HTMLFlipBook
-              width={(dimensions.width)/2}
-              height={dimensions.height/2}
-              className="flip-book"
-              ref={flipbookRef}
-              key={`flip-${flipKey}`}
-              showCover={false}
-              mobileScrollSupport
-              size="fixed"
-              minWidth={315}
-              maxWidth={1000}
-              minHeight={400}
-              maxHeight={1533}
-              startPage={0}
-              drawShadow
-              flippingTime={800}
-              usePortrait={false}
-              startZIndex={0}
-              autoSize
-              maxShadowOpacity={1}
-              showPageCorners
-              disableFlipByClick={false}
-              style={{}}
-              clickEventForward
-              useMouseEvents
-              swipeDistance={30}
-            >
-              {renderPages()}
-            </HTMLFlipBook>
-          )}
-        </FlipBookWrapper>
-      </div>
-    );
-  }
+  // Use a single, shared flipbook configuration so readOnly and edit mode render the same
+  const flipbookProps = {
+    // size + dims vary by readOnly; keep other props shared
+    width:  Math.round(dimensions.width / 2),
+    height: Math.round(dimensions.height / 2),
+    className: 'flip-book shadow-lg',
+    ref: flipbookRef,
+    key: `flip-${flipKey}`,
+    showCover: false,
+    mobileScrollSupport: true,
+    size: ('fixed' as 'fixed'),
+    minWidth: 315,
+    maxWidth: 1000,
+    minHeight: 400,
+    maxHeight: 1533,
+    startPage: 0,
+    drawShadow: true,
+    flippingTime: 800,
+    usePortrait: false,
+    startZIndex: 0,
+    autoSize: true,
+    maxShadowOpacity: 1,
+    showPageCorners: true,
+    disableFlipByClick: false,
+    clickEventForward: true,
+    useMouseEvents: true,
+    swipeDistance: 30,
+    style: {},
+  };
+
+  // Single render path: controls (when no pdfUrl) and a single HTMLFlipBook instance
 
   return (
-    <div ref={wrapperRef} style={{ width: '100%', height: '100%' }}>
-  {!pdfUrl && (
-        <div>
-          <div>
+    <div ref={wrapperRef} className="w-full h-full">
+      {!pdfUrl && (
+        <div className="w-full max-w-2xl mx-auto p-4 bg-white rounded shadow-sm border">
+          <label htmlFor="pdf-file" className="block text-sm font-medium text-gray-700">Upload PDF file</label>
+          <div className="mt-2 flex items-center gap-3">
             <input
+              id="pdf-file"
               type="file"
               accept="application/pdf"
               ref={fileInputRef}
               onChange={handleFileChange}
-              style={{
-                  border: '1px solid #ccc',
-                  display: 'inline-block',
-                  padding: '6px 12px',
-                  cursor: 'pointer'
-              }}
+              className="border border-gray-300 px-3 py-2 cursor-pointer rounded text-sm text-gray-700"
+              aria-describedby="file-help"
             />
+            <div className="text-sm text-gray-500" id="file-help">
+              {selectedFileName ? (
+                <span className="flex items-center gap-2"><svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 00-1.414 0L9 11.586 6.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l7-7a1 1 0 000-1.414z" clipRule="evenodd"/></svg>{selectedFileName}</span>
+              ) : (
+                <span>No file chosen</span>
+              )}
+            </div>
+            {uploading && (
+              <svg className="animate-spin h-5 w-5 text-blue-600" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8z"></path></svg>
+            )}
           </div>
-          <div style={{ marginTop: '10px' }}>
+
+          <div className="mt-4 sm:flex sm:items-center sm:gap-3">
+            <label htmlFor="pdf-url" className="sr-only">PDF URL</label>
             <input
+              id="pdf-url"
               type="text"
               placeholder="Or enter a PDF URL"
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
-              style={{
-                border: '1px solid #ccc',
-                padding: '6px 12px',
-                width: 'calc(100% - 80px)'
-              }}
+              className="border border-gray-300 px-3 py-2 rounded w-full sm:flex-1 text-sm"
             />
-            <button onClick={handleUrlSubmit} style={{ padding: '6px 12px' }}>
-              Load
-            </button>
+            <button onClick={handleUrlSubmit} className="mt-2 sm:mt-0 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Load</button>
           </div>
-          
         </div>
       )}
       {pdfUrl && (
-        <FlipBookWrapper>
-          {error && <p style={{ color: 'red' }}>{error}</p>}
+        <div className="w-full h-full flex items-center justify-center">
+          {error && <p className="text-red-500">{error}</p>}
           {!error && pdf && numPages > 0 ? (
-            <HTMLFlipBook
-              width={dimensions.width}
-              height={dimensions.height}
-              minWidth={200}
-              maxWidth={dimensions.width}
-              minHeight={200}
-              maxHeight={dimensions.height}
-              className="flip-book"
-              ref={flipbookRef}
-              key={`flip-${flipKey}`}
-              showCover
-              mobileScrollSupport
-              size="stretch"
-              startPage={0}
-              drawShadow
-              flippingTime={800}
-              usePortrait
-              startZIndex={0}
-              autoSize
-              maxShadowOpacity={1}
-              showPageCorners
-              disableFlipByClick={false}
-              style={{ width: dimensions.width, height: dimensions.height, transition: 'width 0.3s, height 0.3s' }}
-              clickEventForward
-              useMouseEvents
-              swipeDistance={30}
-            >
+            <HTMLFlipBook {...flipbookProps}>
               {renderPages()}
             </HTMLFlipBook>
           ) : !error && <p>Loading PDF...</p>}
-        </FlipBookWrapper>
+        </div>
       )}
     </div>
   );
