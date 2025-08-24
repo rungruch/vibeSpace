@@ -203,6 +203,79 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
     return () => clearTimeout(t);
   }, [dimensions.width, dimensions.height, dimensions.scale]); // Added scale dependency
 
+  // Navigation handlers for flipbook
+  const goToNext = useCallback(() => {
+    try {
+      const book = flipbookRef.current;
+      if (!book) return;
+      // Preferred: pageFlip() returns the PageFlip instance
+      if (typeof book.pageFlip === 'function') {
+        const pf = book.pageFlip();
+        if (pf && typeof pf.flipNext === 'function') {
+          pf.flipNext();
+          return;
+        }
+      }
+      // Fallbacks for other shapes
+      if (book.pageFlip && typeof book.pageFlip.flipNext === 'function') {
+        book.pageFlip.flipNext();
+        return;
+      }
+      if (typeof book.flipNext === 'function') {
+        book.flipNext();
+        return;
+      }
+    } catch (e) {
+      // best-effort
+    }
+  }, []);
+
+  const goToPrev = useCallback(() => {
+    try {
+      const book = flipbookRef.current;
+      if (!book) return;
+      if (typeof book.pageFlip === 'function') {
+        const pf = book.pageFlip();
+        if (pf && typeof pf.flipPrev === 'function') {
+          pf.flipPrev();
+          return;
+        }
+      }
+      if (book.pageFlip && typeof book.pageFlip.flipPrev === 'function') {
+        book.pageFlip.flipPrev();
+        return;
+      }
+      if (typeof book.flipPrev === 'function') {
+        book.flipPrev();
+        return;
+      }
+    } catch (e) {
+      // best-effort
+    }
+  }, []);
+
+  const goToPage = useCallback((pageNumber: number) => {
+    try {
+      if (!flipbookRef.current) return;
+      // react-pageflip accepts page index (0-based) via flipbookRef.current.flip(pageIndex)
+      const targetIndex = Math.max(0, Math.min((numPages - 1), pageNumber - 1));
+      const book = flipbookRef.current;
+      if (typeof book.pageFlip === 'function') {
+        const pf = book.pageFlip();
+        if (pf && typeof pf.flip === 'function') {
+          pf.flip(targetIndex);
+        } else if (pf && typeof pf.flip === 'undefined' && typeof pf.flipToPage === 'function') {
+          pf.flipToPage(targetIndex);
+        }
+      } else if (book.pageFlip && typeof book.pageFlip.flip === 'function') {
+        book.pageFlip.flip(targetIndex);
+      } else if (typeof book.flip === 'function') {
+        book.flip(targetIndex);
+      }
+      setCurrentPage(targetIndex + 1);
+    } catch (e) {}
+  }, [numPages]);
+
   // Responsive resize (debounced with setTimeout for better performance)
   useEffect(() => {
     if (!pdf) return;
@@ -293,7 +366,6 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
     width:  Math.round(dimensions.width / 2),
     height: Math.round(dimensions.height / 2),
     className: 'flip-book shadow-lg',
-    ref: flipbookRef,
     showCover: false,
     mobileScrollSupport: true,
     size: ('fixed' as 'fixed'),
@@ -325,6 +397,40 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
   }, [dimensions.width, dimensions.height, dimensions.scale]);
 
   // Single render path: controls (when no pdfUrl) and a single HTMLFlipBook instance
+
+  // Sync current page from flipbook (fallback polling for various react-pageflip versions)
+  useEffect(() => {
+    if (!flipbookRef.current) return;
+    let mounted = true;
+    const poll = () => {
+      try {
+        let idx = null as number | null;
+        const book = flipbookRef.current;
+        if (!book) return;
+        if (typeof book.pageFlip === 'function') {
+          const pf = book.pageFlip();
+          if (pf && typeof pf.getCurrentPageIndex === 'function') idx = pf.getCurrentPageIndex();
+        }
+        if (idx === null) {
+          if (book.pageFlip && typeof book.pageFlip.getCurrentPageIndex === 'function') idx = book.pageFlip.getCurrentPageIndex();
+          else if (typeof book.getCurrentPageIndex === 'function') idx = book.getCurrentPageIndex();
+          else if (typeof book.getCurrentPage === 'function') idx = book.getCurrentPage();
+        }
+        if (mounted && idx !== null && !isNaN(idx)) {
+          setCurrentPage(idx + 1);
+        }
+      } catch (e) {}
+    };
+
+    const id = window.setInterval(poll, 300);
+    // initial poll
+    poll();
+
+    return () => {
+      mounted = false;
+      clearInterval(id);
+    };
+  }, [pdfUrl, numPages]);
 
   return (
     <div ref={wrapperRef} className="w-full h-full">
@@ -368,16 +474,39 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
         </div>
       )}
       {pdfUrl && (
-        <div className="w-full h-full flex items-center justify-center" 
+        <div className="w-full h-full flex flex-col items-center justify-center" 
              style={{ 
                minHeight: `${Math.round(dimensions.height / 2) + 50}px`,
                transition: 'min-height 0.2s ease-out' 
              }}>
+          {/* Navigation toolbar */}
+          <div className="w-full max-w-4xl px-4 py-2 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <button onClick={goToPrev} aria-label="Previous page" className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Prev</button>
+              <button onClick={goToNext} aria-label="Next page" className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Next</button>
+              <div className="ml-3 text-sm text-gray-600">Page</div>
+              <div className="ml-1">
+                <input
+                  type="number"
+                  min={1}
+                  max={numPages}
+                  value={currentPage}
+                  readOnly
+                  aria-readonly="true"
+                  className="w-20 border border-gray-300 px-2 py-1 rounded text-sm bg-white"
+                />
+                <span className="ml-2 text-sm text-gray-500">of {numPages}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Open</a>
+            </div>
+          </div>
           {error && <p className="text-red-500">{error}</p>}
           {!error && pdf && numPages > 0 ? (
-            <HTMLFlipBook key={flipbookKey} {...flipbookProps}>
-              {renderPages()}
-            </HTMLFlipBook>
+              <HTMLFlipBook ref={flipbookRef} key={flipbookKey} {...flipbookProps}>
+                {renderPages()}
+              </HTMLFlipBook>
           ) : !error && <p>Loading PDF...</p>}
         </div>
       )}

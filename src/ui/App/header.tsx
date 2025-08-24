@@ -9,8 +9,7 @@ import {
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { EMPLOYEE_IMAGE_URL } from '../../constants/endpoints';
-import AssignmentIcon from '@mui/icons-material/Assignment';
-import NotificationsIcon from '@mui/icons-material/Notifications';
+import { FileTextOutlined as AssignmentIcon, BellOutlined as NotificationsIcon } from '@ant-design/icons';
 import Logo_White from '../../../assets/images/logo_icon.png';
 import { useUserContext } from './context/userContext.tsx';
 import type { CurrentUser } from './Interfaces/interface.ts';
@@ -95,23 +94,13 @@ const IconWrapper: React.FC<{ isDark: boolean }> = ({ isDark }) => (
       ? 'bg-zinc-700 border-zinc-600 hover:bg-zinc-600' 
       : 'bg-slate-50 border-slate-200/50 hover:bg-blue-50'
   }`}>
-    <AssignmentIcon 
-      className={`cursor-pointer transition-all duration-200 hover:scale-110 hover:-rotate-2 ${
-        isDark 
-          ? 'text-zinc-300 hover:text-zinc-100' 
-          : 'text-gray-700 hover:text-gray-800'
-      }`}
-      sx={{ fontSize: '1.7rem' }}
-    />
+    <AssignmentIcon className={`cursor-pointer transition-all duration-200 hover:scale-110 hover:-rotate-2 ${
+        isDark ? 'text-zinc-300 hover:text-zinc-100' : 'text-gray-700 hover:text-gray-800'
+      }`} style={{ fontSize: '1.4rem' }} />
     <Badge count={NOTIFICATION_COUNT} size="small">
-      <NotificationsIcon 
-        className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
-          isDark 
-            ? 'text-zinc-400 hover:text-zinc-200' 
-            : 'text-gray-600 hover:text-gray-700'
-        }`}
-        sx={{ fontSize: '1.7rem' }}
-      />
+      <NotificationsIcon className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
+          isDark ? 'text-zinc-400 hover:text-zinc-200' : 'text-gray-600 hover:text-gray-700'
+        }`} style={{ fontSize: '1.4rem' }} />
     </Badge>
   </div>
 );

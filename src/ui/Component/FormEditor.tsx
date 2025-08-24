@@ -5,7 +5,7 @@ import { PlusOutlined, DeleteOutlined, EditOutlined, EyeOutlined, SettingOutline
 import SurveyPreview from './SurveyPreview.jsx';
 import { FormCreate, SurveyData, SurveyDataSettings } from '../App/Interfaces/interface.ts';
 import { FormTypes, FormVisible, FormMode } from '../enum.ts';
-import StarsIcon from '@mui/icons-material/Stars';
+import { StarOutlined as StarsIcon } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -1498,23 +1498,32 @@ const FormEditor: React.FC<FormCreatorProps> = ({
                     type="primary"
                     style={{ marginBottom: 16 }}
                     onClick={() => {
-                        // Dynamically import xlsx only when needed
-                        import('xlsx').then(XLSX => {
-                            const wsData = [
-                                ['TYPE', 'QUESTION', 'OPTIONS'],
-                                ['TEXT', 'What is your name?', ''],
-                                ['CHOICE', 'What is your favorite color?', 'Red/Blue/Green/Yellow'],
-                                ['TEXT', 'Any additional comments?', ''],
-                                ['CHOICE', 'How did you hear about us?', 'Website/Social Media/Friend/Advertisement']
-                            ];
-                            const ws = XLSX.utils.aoa_to_sheet(wsData);
-                            const wb = XLSX.utils.book_new();
-                            XLSX.utils.book_append_sheet(wb, ws, 'QuestionsTemplate');
-                            XLSX.writeFile(wb, 'template_questions.xlsx');
-                        });
+                        const wsData = [
+                            ['TYPE', 'QUESTION', 'OPTIONS'],
+                            ['TEXT', 'What is your name?', ''],
+                            ['CHOICE', 'What is your favorite color?', 'Red/Blue/Green/Yellow'],
+                            ['TEXT', 'Any additional comments?', ''],
+                            ['CHOICE', 'How did you hear about us?', 'Website/Social Media/Friend/Advertisement']
+                        ];
+                        // simple CSV writer
+                        const csv = wsData.map(row => row.map(cell => {
+                            if (cell === null || cell === undefined) return '';
+                            const s = String(cell);
+                            // escape double quotes
+                            return '"' + s.replace(/"/g, '""') + '"';
+                        }).join(',')).join('\n');
+                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'template_questions.csv';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        URL.revokeObjectURL(url);
                     }}
                 >
-                    ดาวน์โหลดไฟล์ตัวอย่าง (XLSX)
+                    ดาวน์โหลดไฟล์ตัวอย่าง (CSV)
                 </Button>
                 <div style={{ marginBottom: 8, color: '#888' }}>
                     <span>

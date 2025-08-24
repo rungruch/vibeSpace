@@ -1,10 +1,6 @@
 import React from "react";
 import { Button, Tag, Tabs } from "antd";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
-import GradeIcon from "@mui/icons-material/Grade";
-import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
+import { BookOutlined as MenuBookIcon, ClockCircleOutlined as AccessTimeIcon, ReadOutlined as LibraryBooksIcon, StarOutlined as GradeIcon, CrownOutlined as WorkspacePremiumIcon } from '@ant-design/icons';
 import LearningPath from "../../../Component/LearningPath.tsx";
 import type { ElearningCourseGet } from "../../Interfaces/elearning.ts";
 
@@ -155,10 +151,7 @@ export default function CourseInfo({ course, isDark, isEnrolled, onEnroll, onCon
                   : "text-gray-700 bg-gray-50 hover:bg-gray-100"
               }`}
             >
-              <AccessTimeIcon
-                className={`mr-2 ${isDark ? "text-cyan-400" : "text-cyan-600"}`}
-                fontSize="small"
-              />
+              <AccessTimeIcon className={`mr-2 ${isDark ? "text-cyan-400" : "text-cyan-600"}`} style={{ fontSize: 16 }} />
               <span className="font-medium">{course?.duration_minute} นาที</span>
             </div>
             <div
@@ -168,10 +161,7 @@ export default function CourseInfo({ course, isDark, isEnrolled, onEnroll, onCon
                   : "text-gray-700 bg-gray-50 hover:bg-gray-100"
               }`}
             >
-              <LibraryBooksIcon
-                className={`mr-2 ${isDark ? "text-teal-400" : "text-teal-600"}`}
-                fontSize="small"
-              />
+              <LibraryBooksIcon className={`mr-2 ${isDark ? "text-teal-400" : "text-teal-600"}`} style={{ fontSize: 16 }} />
               <span className="font-medium">{0} บทเรียน</span>
             </div>
             <div
@@ -181,10 +171,7 @@ export default function CourseInfo({ course, isDark, isEnrolled, onEnroll, onCon
                   : "text-gray-700 bg-gray-50 hover:bg-gray-100"
               }`}
             >
-              <GradeIcon
-                className={`mr-2 ${isDark ? "text-amber-400" : "text-amber-600"}`}
-                fontSize="small"
-              />
+              <GradeIcon className={`mr-2 ${isDark ? "text-amber-400" : "text-amber-600"}`} style={{ fontSize: 16 }} />
               <span className="font-medium">{course?.rating} คะแนน</span>
             </div>
             {course?.certificate && (
@@ -195,10 +182,7 @@ export default function CourseInfo({ course, isDark, isEnrolled, onEnroll, onCon
                     : "text-gray-700 bg-gray-50 hover:bg-gray-100"
                 }`}
               >
-                <WorkspacePremiumIcon
-                  className={`mr-2 ${isDark ? "text-violet-400" : "text-violet-600"}`}
-                  fontSize="small"
-                />
+                <WorkspacePremiumIcon className={`mr-2 ${isDark ? "text-violet-400" : "text-violet-600"}`} style={{ fontSize: 16 }} />
                 <span className="font-medium">มีใบรับรอง</span>
               </div>
             )}

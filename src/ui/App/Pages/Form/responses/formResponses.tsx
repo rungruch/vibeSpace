@@ -1,9 +1,6 @@
 import React, { useState, useEffect, Suspense } from "react";
 import {
-  FormCreate,
-  FormSubmit,
-  QuizSubmit,
-  SurveyData,
+  FormCreate
 } from "../../../Interfaces/interface.ts";
 import { useUserContext } from "../../../context/userContext.tsx";
 import { Button, Collapse, Table } from "antd";
@@ -14,7 +11,6 @@ import { useParams } from "react-router-dom";
 import { FormTypes } from "../../../../enum.ts";
 import NoMatch from "../../../no-match.js";
 import { useTheme } from "../../../../../context/themeContext.js";
-import { Box, Typography, Paper } from '@mui/material';
 // Lazy load charts to reduce initial bundle size
 
 // Cache the charts import promise to avoid multiple requests
@@ -40,7 +36,6 @@ export default function FormResponses() {
     useAppState();
   const user = useUserContext();
   const [formdata, setFormData] = useState<FormCreate | null>(null);
-  const [surveyJsonData, setSurveyJsonData] = useState<SurveyData>();
   const [surveyQuestions, setSurveyQuestions] = useState<any[]>([]);
   const [surveyResponsesJsonData, setSurveyResponsesJsonData] =
     useState<any>(null);
@@ -255,11 +250,9 @@ const RenderVisualization = () => {
       ];
     }
 
-    // Export to Excel handler (lazy load xlsx only when user clicks)
+    // Export to CSV handler (replaces XLSX export to reduce bundle size)
     const handleExportExcel = async () => {
       try {
-  // Dynamic import of xlsx (chunk will be placed in xlsx-lib split chunk)
-  const XLSX = await import('xlsx');
         // Prepare header row
         const header = columns.map((col) => col.title);
         // Prepare data rows
@@ -268,17 +261,32 @@ const RenderVisualization = () => {
         );
         // Combine header and rows
         const worksheetData = [header, ...rows];
-        const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Responses");
-        // Sanitize formdata.title for filename (remove invalid characters)
-        const safeTitle = (formdata?.title || "survey_responses").replace(
-          /[^a-zA-Z0-9ก-๙ _-]/g,
-          ""
-        );
-        XLSX.writeFile(workbook, `${safeTitle}.xlsx`);
+        // simple CSV writer with escaping and CRLF line endings (better for Excel on Windows)
+        const csvContent = worksheetData
+          .map((r) =>
+            r
+              .map((cell) => {
+                if (cell === null || cell === undefined) return "";
+                const s = String(cell);
+                return '"' + s.replace(/"/g, '""') + '"';
+              })
+              .join(",")
+          )
+          .join("\r\n");
+        // Prepend UTF-8 BOM so Excel recognizes UTF-8 encoding (fixes Thai/other non-latin characters)
+        const BOM = '\uFEFF';
+        const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const safeTitle = (formdata?.title || "survey_responses").replace(/[^a-zA-Z0-9ก-๙ _-]/g, "");
+        a.download = `${safeTitle}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
       } catch (e) {
-        console.error('Failed to export Excel', e);
+        console.error('Failed to export CSV', e);
       }
     };
 
@@ -331,7 +339,6 @@ const RenderVisualization = () => {
           const form = await fetchFormById(id, user.id);
           const formContent = JSON.parse(form.content);
           setFormData(form);
-          setSurveyJsonData(formContent);
 
           // call function gather question formContent.pages  in each {}.elements
           const gatherQuestions = (pages: any[]) => {

@@ -6,7 +6,7 @@ import { useTheme } from "../../../../context/themeContext.js";
 import { fetchAllPosts, fetchAllPostsCategory } from "../../../../api/posts.ts";
 import { PostsData } from "../../Interfaces/interface.ts";
 import dayjs from "dayjs";
-import NewspaperIcon from '@mui/icons-material/Newspaper';
+import { ReadOutlined as NewspaperIcon } from '@ant-design/icons';
 
 const { Search } = Input;
 const { Option } = Select;

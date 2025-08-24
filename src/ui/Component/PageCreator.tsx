@@ -28,6 +28,7 @@ export default function PageCreator({ mode, settings, onSave, content }: PageCre
   const [isReady, setIsReady] = useState(false);
   const delayedReady = useDelayedRender(isReady, 1500);
   const [previewEnabled, setPreviewEnabled] = useState(mode === EditorMode.ReadOnly);
+  const [shouldLoadEditor, setShouldLoadEditor] = useState(false);
 
   // Helper: add spinner styles
   const addSpinnerStyles = () => {
@@ -46,12 +47,46 @@ export default function PageCreator({ mode, settings, onSave, content }: PageCre
     try { return JSON.parse(raw); } catch { return getDefaultContent(); }
   };
 
-  // Only initialize Editor.js when user is loaded (dynamic import version)
+  // Defer initializing Editor.js until the editor container is near the viewport
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      setShouldLoadEditor(true);
+      return;
+    }
+
+    const el = document.getElementById('editorjs');
+    if (!el) {
+      // If container not found (server-side or rendered differently), load immediately
+      setShouldLoadEditor(true);
+      return;
+    }
+
+    const io = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          setShouldLoadEditor(true);
+          io.disconnect();
+          break;
+        }
+      }
+    }, { rootMargin: '500px' });
+
+    io.observe(el);
+
+    return () => io.disconnect();
+  }, []);
+
+  // Only initialize Editor.js when user is loaded and the editor should be loaded
   useEffect(() => {
     if (!user || !user.id) return;
+    if (!shouldLoadEditor) return;
     addSpinnerStyles();
+
     let cancelled = false;
-    (async () => {
+    let idleId: number | null = null;
+    let timeoutId: number | null = null;
+
+    const doImport = async () => {
       try {
         const [EditorJSMod, HeaderMod, ParagraphMod, CodeMod, LinkToolMod, QuoteMod, DelimiterMod, TableMod, AttachesMod, EmbedMod, RawMod, ImageToolMod] = await Promise.all([
           import(/* webpackChunkName: "editor-core" */ '@editorjs/editorjs'),
@@ -84,82 +119,47 @@ export default function PageCreator({ mode, settings, onSave, content }: PageCre
         let editorInstance = new EditorJS({
           readOnly: previewEnabled,
           onReady: async () => {
-            // // // Only toggle readOnly if the method exists and not in read-only mode
-            // if (
-            //   editorInstance &&
-            //   editorInstance.readOnly &&
-            //   typeof editorInstance.readOnly.toggle === "function"
-            // ) {
-            //   await editorInstance.readOnly.toggle(false);
-            // }
             setIsReady(true);
           },
           holder: "editorjs",
           minHeight: mode === EditorMode.ReadOnly ? 300 : 300,
           placeholder: "Let's write an awesome story!",
           tools: {
-            header: {
-              class: Header,
-              config: { placeholder: "Enter a header", levels: [1,2,3,4,5,6], defaultLevel: 2 }
-            },
-            paragraph: {
-              class: Paragraph,
-              inlineToolbar: true,
-              config: { placeholder: mode === EditorMode.ReadOnly ? "" : "Enter text here..." }
-            },
-            quote: {
-              class: Quote,
-              inlineToolbar: true,
-              shortcut: "CMD+SHIFT+O",
-              config: { quotePlaceholder: "Enter a quote", captionPlaceholder: "Quote's author" }
-            },
+            header: { class: Header, config: { placeholder: "Enter a header", levels: [1,2,3,4,5,6], defaultLevel: 2 } },
+            paragraph: { class: Paragraph, inlineToolbar: true, config: { placeholder: mode === EditorMode.ReadOnly ? "" : "Enter text here..." } },
+            quote: { class: Quote, inlineToolbar: true, shortcut: "CMD+SHIFT+O", config: { quotePlaceholder: "Enter a quote", captionPlaceholder: "Quote's author" } },
             code: { class: Code, shortcut: "CMD+SHIFT+C" },
             delimiter: Delimiter,
             table: { class: Table, inlineToolbar: true, config: { rows: 2, cols: 3 } },
             linkTool: { class: LinkTool, config: { endpoint: '/api/fetchUrl' } },
-            image: {
-              class: ImageTool,
-              config: {
-                field: 'image',
-                types: 'image/*',
-                captionPlaceholder: 'Enter image caption...',
-                buttonContent: 'Select an Image',
-                uploader: {
-                  uploadByFile: async (file: File) => {
-                    try {
-                      if (!user || !user.id) throw new Error('User not loaded.');
-                      let fileSubmit: FileSubmit = { type: file.type || 'application/octet-stream', uploaded_by: user.id, uploaded_at: new Date() };
-                      const res = await uploadFile(file, fileSubmit);
-                      return { success: 1, file: { url: res.staticUrl || '', filename: res.filename, path: res.path } };
-                    } catch (error) {
-                      console.error('Image upload failed: ', error);
-                      return { success: 0 };
-                    }
-                  },
-                  uploadByUrl: (url: string) => Promise.resolve({ success: 1, file: { url } })
+            image: { class: ImageTool, config: { field: 'image', types: 'image/*', captionPlaceholder: 'Enter image caption...', buttonContent: 'Select an Image', uploader: {
+              uploadByFile: async (file: File) => {
+                try {
+                  if (!user || !user.id) throw new Error('User not loaded.');
+                  let fileSubmit: FileSubmit = { type: file.type || 'application/octet-stream', uploaded_by: user.id, uploaded_at: new Date() };
+                  const res = await uploadFile(file, fileSubmit);
+                  return { success: 1, file: { url: res.staticUrl || '', filename: res.filename, path: res.path } };
+                } catch (error) {
+                  console.error('Image upload failed: ', error);
+                  return { success: 0 };
+                }
+              },
+              uploadByUrl: (url: string) => Promise.resolve({ success: 1, file: { url } })
+            } } },
+            attaches: { class: AttachesTool, config: { buttonText: 'Add PDF/Document', uploader: {
+              uploadByUrl: (url: string) => Promise.resolve({ success: 1, file: { url, title: url.split('/').pop() || 'Document', extension: url.split('.').pop() || 'pdf' } }),
+              uploadByFile: async (file: File) => {
+                try {
+                  if (!user || !user.id) throw new Error('User not loaded.');
+                  let fileSubmit: FileSubmit = { type: file.type || 'application/octet-stream', uploaded_by: user.id, uploaded_at: new Date() };
+                  const res = await uploadFile(file, fileSubmit);
+                  return { success: 1, file: { url: res.staticUrl || '', title: res.filename, extension: file.name.split('.').pop() } };
+                } catch (error) {
+                  console.error('File upload failed: ', error);
+                  return { success: 0 };
                 }
               }
-            },
-            attaches: {
-              class: AttachesTool,
-              config: {
-                buttonText: 'Add PDF/Document',
-                uploader: {
-                  uploadByUrl: (url: string) => Promise.resolve({ success: 1, file: { url, title: url.split('/').pop() || 'Document', extension: url.split('.').pop() || 'pdf' } }),
-                  uploadByFile: async (file: File) => {
-                    try {
-                      if (!user || !user.id) throw new Error('User not loaded.');
-                      let fileSubmit: FileSubmit = { type: file.type || 'application/octet-stream', uploaded_by: user.id, uploaded_at: new Date() };
-                      const res = await uploadFile(file, fileSubmit);
-                      return { success: 1, file: { url: res.staticUrl || '', title: res.filename, extension: file.name.split('.').pop() } };
-                    } catch (error) {
-                      console.error('File upload failed: ', error);
-                      return { success: 0 };
-                    }
-                  }
-                }
-              }
-            },
+            } } },
             embed: Embed,
             raw: RawTool,
             video: { class: VideoTool, config: { userId: user.id } },
@@ -177,9 +177,26 @@ export default function PageCreator({ mode, settings, onSave, content }: PageCre
       } catch (e) {
         if (!cancelled) console.error('Failed to load editor dynamically', e);
       }
-    })();
-    return () => { cancelled = true; };
-  }, [user, previewEnabled, content, mode]);
+    };
+
+    // schedule import during idle time when possible
+    if ('requestIdleCallback' in window) {
+      idleId = (window as any).requestIdleCallback(() => {
+        doImport();
+      }, { timeout: 2000 });
+    } else {
+      // fallback: small timeout
+      timeoutId = (window as any).setTimeout(() => doImport(), 300);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId !== null && 'cancelIdleCallback' in window) {
+        try { (window as any).cancelIdleCallback(idleId); } catch {}
+      }
+      if (timeoutId !== null) clearTimeout(timeoutId);
+    };
+  }, [user, previewEnabled, content, mode, shouldLoadEditor]);
 
   const saveData = async () => {
     if (editor) {

@@ -9,16 +9,17 @@ import { useTheme } from '../../context/themeContext';
 import type { CurrentUser } from './Interfaces/interface.ts';
 import { PERMISSIONS, getUserDisplayRole } from '../../utils/permissions.ts';
 
-// Import Material-UI icons
-import HomeIcon from '@mui/icons-material/Home';
-import MessageIcon from '@mui/icons-material/Message';
-import MenuBookIcon from '@mui/icons-material/MenuBook';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
-import AssessmentIcon from '@mui/icons-material/Assessment';
-import AssignmentIcon from '@mui/icons-material/Assignment';
-import SettingsIcon from '@mui/icons-material/Settings';
-import SchoolIcon from '@mui/icons-material/School';
+// Use Ant Design icons instead of MUI icons
+import {
+  HomeFilled as HomeIcon,
+  MessageFilled as MessageIcon,
+  BookFilled as MenuBookIcon,
+  AppstoreFilled as DashboardIcon,
+  BarChartOutlined as AssessmentIcon,
+  ProfileFilled as AssignmentIcon,
+  SettingFilled as SettingsIcon,
+  BankFilled as SchoolIcon,
+} from '@ant-design/icons';
 
 // Types
 interface MenuItem {
