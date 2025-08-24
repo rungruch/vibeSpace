@@ -4,16 +4,10 @@ import { FileSubmit } from '../App/Interfaces/interface.ts';
 import { createRoot } from 'react-dom/client';
 import HTMLFlipBook from 'react-pageflip';
 import styled from 'styled-components';
+import * as pdfjsLib from 'pdfjs-dist';
 
-// Minimal Type declarations for PDF.js (avoid broad any where possible)
-declare global {
-  interface Window {
-    pdfjsLib?: {
-      getDocument: (url: string) => { promise: Promise<PDFDocumentProxy>};
-      GlobalWorkerOptions: { workerSrc: string };
-    };
-  }
-}
+// Set up the worker using local file (copied by webpack)
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
 
 interface PDFViewport { width: number; height: number; }
 interface PDFRenderTask { cancel: () => void; promise: Promise<void>; }
@@ -24,31 +18,6 @@ interface PDFPageProxy {
 interface PDFDocumentProxy {
   numPages: number;
   getPage: (pageNumber: number) => Promise<PDFPageProxy>;
-}
-
-// --- Singleton pdf.js loader (prevents multiple script attach / teardown) ---
-const PDF_JS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js';
-const PDF_WORKER_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
-let pdfjsLoadingPromise: Promise<typeof window.pdfjsLib | undefined> | null = null;
-function ensurePdfjs(): Promise<typeof window.pdfjsLib | undefined> {
-  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
-  if (pdfjsLoadingPromise) return pdfjsLoadingPromise;
-  pdfjsLoadingPromise = new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = PDF_JS_CDN;
-    script.async = true;
-    script.onload = () => {
-      if (window.pdfjsLib) {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER_CDN;
-        resolve(window.pdfjsLib);
-      } else {
-        resolve(undefined);
-      }
-    };
-    script.onerror = (e) => reject(e);
-    document.head.appendChild(script);
-  });
-  return pdfjsLoadingPromise;
 }
 
 const FlipBookWrapper = styled.div`
@@ -94,7 +63,6 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
   const [pdfUrl, setPdfUrl] = useState(data.file?.url || data.url || '');
   const [dimensions, setDimensions] = useState({ width: 500, height: 700, scale: 1 });
   const [urlInput, setUrlInput] = useState('');
-  const [pdfjsReady, setPdfjsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -102,15 +70,6 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
   const resizeTimeoutRef = useRef<number | null>(null);
   const flipbookRef = useRef<any>(null);
   const [flipKey, setFlipKey] = useState(0);
-
-  // Load pdf.js only once (singleton) – no cleanup removing script (shared resource)
-  useEffect(() => {
-    let cancelled = false;
-    ensurePdfjs()
-      .then(() => { if (!cancelled) setPdfjsReady(true); })
-      .catch((e) => { if (!cancelled) setError('Failed to load PDF library'); console.error(e); });
-    return () => { cancelled = true; };
-  }, []);
 
   // Helper to calculate dimensions based on container width
   const calculateDimensions = useCallback(async (pdfInstance: PDFDocumentProxy) => {
@@ -140,10 +99,10 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
   }, []);
 
   useEffect(() => {
-    if (!pdfUrl || !pdfjsReady || !window.pdfjsLib) return;
+    if (!pdfUrl) return;
     setError(null);
     const myLoadId = ++loadIdRef.current;
-    const loadingTask = window.pdfjsLib.getDocument(pdfUrl);
+    const loadingTask = pdfjsLib.getDocument(pdfUrl);
     loadingTask.promise
       .then(async (pdfInstance) => {
         if (myLoadId !== loadIdRef.current) return; // stale load ignored
@@ -158,7 +117,7 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
         setPdf(null);
         setNumPages(0);
       });
-  }, [pdfUrl, pdfjsReady, calculateDimensions]);
+  }, [pdfUrl, calculateDimensions]);
 
   // When dimensions update, try to call flipbook update; if not available, force remount
   useEffect(() => {
