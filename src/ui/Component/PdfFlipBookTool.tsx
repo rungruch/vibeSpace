@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { uploadFile } from '../../api/file.ts';
 import { FileSubmit } from '../App/Interfaces/interface.ts';
 import { createRoot } from 'react-dom/client';
@@ -51,7 +51,55 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
   const loadIdRef = useRef(0); // guards against race conditions
   const resizeTimeoutRef = useRef<number | null>(null);
   const flipbookRef = useRef<any>(null);
-  const [flipKey, setFlipKey] = useState(0);
+  const [currentPage, setCurrentPage] = useState(0); // Track current page for debugging
+  
+  // Canvas pool for reusing canvas elements with memory monitoring
+  const canvasPoolRef = useRef<HTMLCanvasElement[]>([]);
+  const memoryStatsRef = useRef({ activeCanvases: 0, poolSize: 0, renderCount: 0 });
+  
+  const getCanvasFromPool = useCallback(() => {
+    memoryStatsRef.current.activeCanvases++;
+    if (canvasPoolRef.current.length > 0) {
+      const canvas = canvasPoolRef.current.pop()!;
+      memoryStatsRef.current.poolSize--;
+      return canvas;
+    }
+    return document.createElement('canvas');
+  }, []);
+  
+  const returnCanvasToPool = useCallback((canvas: HTMLCanvasElement) => {
+    // Clear canvas and return to pool with memory limits
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    canvas.width = 0;
+    canvas.height = 0;
+    
+    memoryStatsRef.current.activeCanvases--;
+    
+    // Adaptive pool size based on memory pressure
+    const maxPoolSize = window.innerWidth < 768 ? 5 : 10; // Smaller pool on mobile
+    if (canvasPoolRef.current.length < maxPoolSize) {
+      canvasPoolRef.current.push(canvas);
+      memoryStatsRef.current.poolSize++;
+    }
+    
+    // Memory pressure detection (simple heuristic)
+    if (memoryStatsRef.current.renderCount % 50 === 0 && 'memory' in performance) {
+      try {
+        const memInfo = (performance as any).memory;
+        if (memInfo && memInfo.usedJSHeapSize > memInfo.totalJSHeapSize * 0.8) {
+          // High memory usage - clear half the pool
+          const poolToClear = Math.floor(canvasPoolRef.current.length / 2);
+          canvasPoolRef.current.splice(0, poolToClear);
+          memoryStatsRef.current.poolSize -= poolToClear;
+        }
+      } catch (e) {
+        // Memory API not available or failed
+      }
+    }
+  }, []);
 
   // Helper to calculate dimensions based on container width
   const calculateDimensions = useCallback(async (pdfInstance: PDFDocumentProxy) => {
@@ -60,16 +108,30 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
       const page = await pdfInstance.getPage(1);
       const baseViewport = page.getViewport({ scale: 1 });
       const containerWidth = (wrapperRef.current?.clientWidth || 500);
-      const maxLogicalWidth = 1200;
+      const maxLogicalWidth = 1600; // Increased from 1200
       const targetWidth = Math.min(containerWidth, maxLogicalWidth);
       const scale = targetWidth / baseViewport.width;
       const scaledViewport = page.getViewport({ scale });
+      
       setDimensions((prev) => {
-        // Only update if width or height changes by more than 400px
+        // Smart responsive thresholds based on container size
+        const isMobile = containerWidth < 768;
+        const isTablet = containerWidth >= 768 && containerWidth < 1024;
+        
+        // More responsive on mobile/tablet, less on desktop to prevent memory churn
+        const widthThreshold = isMobile ? 50 : isTablet ? 100 : 200;
+        const heightThreshold = isMobile ? 50 : isTablet ? 100 : 200;
+        const scaleThreshold = isMobile ? 0.05 : 0.02;
+        
+        // Check if changes are significant enough
+        const widthChange = Math.abs(prev.width - scaledViewport.width);
+        const heightChange = Math.abs(prev.height - scaledViewport.height);
+        const scaleChange = Math.abs(prev.scale - scale);
+        
         if (
-          Math.abs(prev.width - scaledViewport.width) > 400 ||
-          Math.abs(prev.height - scaledViewport.height) > 400 ||
-          Math.abs(prev.scale - scale) > 0.01
+          widthChange > widthThreshold ||
+          heightChange > heightThreshold ||
+          scaleChange > scaleThreshold
         ) {
           return { width: scaledViewport.width, height: scaledViewport.height, scale };
         }
@@ -90,6 +152,7 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
         if (myLoadId !== loadIdRef.current) return; // stale load ignored
         setPdf(pdfInstance);
         setNumPages(pdfInstance.numPages);
+        setCurrentPage(1); // Initialize current page
         await calculateDimensions(pdfInstance);
       })
       .catch((e: any) => {
@@ -98,62 +161,88 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
         setError('Failed to load PDF.');
         setPdf(null);
         setNumPages(0);
+        setCurrentPage(0);
       });
   }, [pdfUrl, calculateDimensions]);
 
-  // When dimensions update, try to call flipbook update; if not available, force remount
+  // Cleanup on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      // Clear all timers
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
+      
+      // Clear canvas pool
+      canvasPoolRef.current = [];
+      memoryStatsRef.current = { activeCanvases: 0, poolSize: 0, renderCount: 0 };
+    };
+  }, []);
+
+  // When dimensions update, try to call flipbook update and force refresh
   useEffect(() => {
     // short debounce to allow dimensions to settle
     const t = setTimeout(() => {
       try {
-        if (flipbookRef.current && typeof flipbookRef.current.update === 'function') {
-          flipbookRef.current.update();
-        } else {
-          // force remount as a fallback
-          setFlipKey(k => k + 1);
+        if (flipbookRef.current) {
+          // Try multiple update methods
+          if (typeof flipbookRef.current.update === 'function') {
+            flipbookRef.current.update();
+          }
+          if (typeof flipbookRef.current.updateFromHtml === 'function') {
+            flipbookRef.current.updateFromHtml();
+          }
+          if (typeof flipbookRef.current.render === 'function') {
+            flipbookRef.current.render();
+          }
         }
       } catch (e) {
-        setFlipKey(k => k + 1);
+        console.warn('Flipbook update failed', e);
       }
     }, 50);
     return () => clearTimeout(t);
-  }, [dimensions.width, dimensions.height]);
+  }, [dimensions.width, dimensions.height, dimensions.scale]); // Added scale dependency
 
   // Responsive resize (debounced with setTimeout for better performance)
   useEffect(() => {
     if (!pdf) return;
-    // Use ResizeObserver if available to detect container size changes
-    let ro: ResizeObserver | null = null;
-  const scheduleCalc = () => {
+    
+    const scheduleCalc = () => {
       if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
       resizeTimeoutRef.current = window.setTimeout(() => {
         calculateDimensions(pdf);
       }, 100);
     };
 
+    // Use ResizeObserver if available to detect container size changes
     if (typeof ResizeObserver !== 'undefined' && wrapperRef.current) {
-      ro = new ResizeObserver((entries) => {
+      const ro = new ResizeObserver((entries) => {
         for (const entry of entries) {
           scheduleCalc();
         }
       });
       ro.observe(wrapperRef.current);
+      
+      return () => {
+        if (wrapperRef.current) ro.unobserve(wrapperRef.current);
+        if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
+      };
     } else {
       // fallback to window resize
       const handleResize = () => scheduleCalc();
       window.addEventListener('resize', handleResize);
       // initial schedule
       scheduleCalc();
-      return () => window.removeEventListener('resize', handleResize);
+      
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
+      };
     }
-
-    return () => {
-      if (ro && wrapperRef.current) ro.unobserve(wrapperRef.current);
-      if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
-    };
   }, [pdf, calculateDimensions]);
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Memoized file handling functions to prevent unnecessary re-renders
+  const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setSelectedFileName(file.name);
@@ -169,39 +258,49 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
         setUploading(false);
       } catch (e) { console.error('PDF upload failed', e); }
     }
-  };
+  }, [config.userId, data, onDataChange]);
 
-  const handleUrlSubmit = () => {
+  const handleUrlSubmit = useCallback(() => {
     if (urlInput) {
       setPdfUrl(urlInput);
       onDataChange({ url: urlInput });
     }
-  };
+  }, [urlInput, onDataChange]);
 
   const renderPages = useCallback(() => {
     if (!pdf) return null;
+    
+    // Simple approach: render all pages but optimize Page component with lazy loading
     const pages = [];
     for (let i = 1; i <= numPages; i++) {
-      pages.push(<Page key={i} pageNumber={i} pdf={pdf} scale={dimensions.scale} />);
+      pages.push(
+        <Page 
+          key={i} 
+          pageNumber={i} 
+          pdf={pdf} 
+          scale={dimensions.scale} 
+          canvasPool={{ get: getCanvasFromPool, return: returnCanvasToPool }} 
+        />
+      );
     }
+    
     return pages;
-  }, [numPages, pdf, dimensions.scale]);
+  }, [numPages, pdf, dimensions.scale, getCanvasFromPool, returnCanvasToPool]);
 
   // Use a single, shared flipbook configuration so readOnly and edit mode render the same
-  const flipbookProps = {
+  const flipbookProps = useMemo(() => ({
     // size + dims vary by readOnly; keep other props shared
     width:  Math.round(dimensions.width / 2),
     height: Math.round(dimensions.height / 2),
     className: 'flip-book shadow-lg',
     ref: flipbookRef,
-    key: `flip-${flipKey}`,
     showCover: false,
     mobileScrollSupport: true,
     size: ('fixed' as 'fixed'),
     minWidth: 315,
-    maxWidth: 1000,
+    maxWidth: 1400, // Increased from 1000
     minHeight: 400,
-    maxHeight: 1533,
+    maxHeight: 2000, // Increased from 1533
     startPage: 0,
     drawShadow: true,
     flippingTime: 800,
@@ -215,7 +314,15 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
     useMouseEvents: true,
     swipeDistance: 30,
     style: {},
-  };
+  }), [dimensions.width, dimensions.height, dimensions.scale]); // ✅ Added scale dependency
+
+  // Force flipbook re-render when dimensions change significantly
+  const flipbookKey = useMemo(() => {
+    // Create a key that changes when dimensions change significantly
+    const widthKey = Math.floor(dimensions.width / 100); // Changes every 100px
+    const heightKey = Math.floor(dimensions.height / 100);
+    return `flipbook-${widthKey}-${heightKey}-${Math.floor(dimensions.scale * 100)}`;
+  }, [dimensions.width, dimensions.height, dimensions.scale]);
 
   // Single render path: controls (when no pdfUrl) and a single HTMLFlipBook instance
 
@@ -261,10 +368,14 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
         </div>
       )}
       {pdfUrl && (
-        <div className="w-full h-full flex items-center justify-center">
+        <div className="w-full h-full flex items-center justify-center" 
+             style={{ 
+               minHeight: `${Math.round(dimensions.height / 2) + 50}px`,
+               transition: 'min-height 0.2s ease-out' 
+             }}>
           {error && <p className="text-red-500">{error}</p>}
           {!error && pdf && numPages > 0 ? (
-            <HTMLFlipBook {...flipbookProps}>
+            <HTMLFlipBook key={flipbookKey} {...flipbookProps}>
               {renderPages()}
             </HTMLFlipBook>
           ) : !error && <p>Loading PDF...</p>}
@@ -274,53 +385,150 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
   );
 };
 
-const Page = React.forwardRef<HTMLDivElement, { pageNumber: number; pdf: PDFDocumentProxy; scale: number }>(({ pageNumber, pdf, scale }, ref) => {
+const Page = React.memo(React.forwardRef<HTMLDivElement, { 
+  pageNumber: number; 
+  pdf: PDFDocumentProxy; 
+  scale: number;
+  canvasPool?: { get: () => HTMLCanvasElement; return: (canvas: HTMLCanvasElement) => void }
+}>(({ pageNumber, pdf, scale, canvasPool }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastScaleRef = useRef<number | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const pageRef = useRef<HTMLDivElement>(null);
+
+  // Use Intersection Observer for lazy loading
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect(); // Only need to observe once
+        }
+      },
+      {
+        rootMargin: '200px', // Load pages 200px before they come into view
+      }
+    );
+
+    if (pageRef.current) {
+      observer.observe(pageRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Optimized rendering with OffscreenCanvas when available
+  const renderPageOptimized = useCallback(async (page: any, viewport: any) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Use OffscreenCanvas when available for better performance
+    const useOffscreen = typeof OffscreenCanvas !== 'undefined';
+    
+    if (useOffscreen) {
+      try {
+        const offscreen = new OffscreenCanvas(viewport.width, viewport.height);
+        const offscreenContext = offscreen.getContext('2d');
+        if (offscreenContext) {
+          const renderTask = page.render({ canvasContext: offscreenContext, viewport });
+          await renderTask.promise;
+          
+          // Transfer to main canvas
+          const mainContext = canvas.getContext('2d');
+          if (mainContext) {
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            mainContext.drawImage(offscreen as any, 0, 0);
+          }
+          return;
+        }
+      } catch (e) {
+        // Fallback to regular canvas if OffscreenCanvas fails
+      }
+    }
+
+    // Regular canvas rendering
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (context) {
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+      const renderTask = page.render({ canvasContext: context, viewport });
+      await renderTask.promise;
+    }
+  }, []);
 
   useEffect(() => {
+    if (!isVisible) return; // Don't render until visible
+    
     let cancelled = false;
-    let renderTask: PDFRenderTask | null = null;
-    // Avoid rerendering if scale change is negligible (<1%)
-    if (lastScaleRef.current !== null && Math.abs(scale - lastScaleRef.current) / (lastScaleRef.current || 1) < 0.01) {
-      return; // skip tiny scale change
+    // Smart scale change detection - more sensitive on smaller scales
+    const currentScale = lastScaleRef.current;
+    if (currentScale !== null) {
+      const scaleChangePercent = Math.abs(scale - currentScale) / currentScale;
+      const threshold = scale < 0.5 ? 0.02 : scale < 1.0 ? 0.01 : 0.005; // More sensitive at small scales
+      if (scaleChangePercent < threshold) {
+        return; // Skip insignificant changes
+      }
     }
     lastScaleRef.current = scale;
+    
     if (pdf) {
-      pdf.getPage(pageNumber).then((page) => {
+      // Memory-efficient approach: reuse existing canvas when possible
+      pdf.getPage(pageNumber).then(async (page) => {
         if (cancelled) return;
         const viewport = page.getViewport({ scale });
+        
+        // Check if we can reuse existing canvas dimensions
         const canvas = canvasRef.current;
-        if (canvas) {
-            const context = canvas.getContext('2d', { willReadFrequently: true });
+        const needsResize = canvas && (
+          Math.abs(canvas.width - viewport.width) > 10 ||
+          Math.abs(canvas.height - viewport.height) > 10
+        );
+        
+        if (!needsResize && canvas && canvas.width > 0) {
+          // Canvas size is close enough, just clear and re-render
+          const context = canvas.getContext('2d');
           if (context) {
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-            renderTask = page.render({ canvasContext: context, viewport });
-            renderTask.promise.catch((e: any) => {
-              // Suppress expected cancellation noise
-              if (e?.name !== 'RenderingCancelledException') {
-                console.warn(`Page ${pageNumber} render error`, e);
-              }
-            });
+            context.clearRect(0, 0, canvas.width, canvas.height);
+          }
+        }
+        
+        try {
+          await renderPageOptimized(page, viewport);
+        } catch (e: any) {
+          // Suppress expected cancellation noise
+          if (e?.name !== 'RenderingCancelledException') {
+            console.warn(`Page ${pageNumber} render error`, e);
           }
         }
       }).catch((e) => console.warn('Page render failed', e));
     }
+    
     return () => {
       cancelled = true;
-      if (renderTask) {
-        try { renderTask.cancel(); } catch {}
-      }
     };
-  }, [pdf, pageNumber, scale]);
+  }, [pdf, pageNumber, scale, isVisible, renderPageOptimized]);
 
   return (
-    <div ref={ref} className="page">
-      <canvas ref={canvasRef} />
+    <div 
+      ref={(node) => {
+        pageRef.current = node;
+        if (typeof ref === 'function') ref(node);
+        else if (ref) ref.current = node;
+      }} 
+      className="page"
+      style={{ minHeight: '400px' }} // Ensure page has height for intersection observer
+    >
+      {isVisible ? (
+        <canvas ref={canvasRef} />
+      ) : (
+        <div className="bg-gray-100 h-full flex items-center justify-center text-gray-500 min-h-[400px]">
+          <div>Page {pageNumber}</div>
+        </div>
+      )}
     </div>
   );
-});
+}));
 
 export default class PdfFlipBookTool {
   private api: any;
