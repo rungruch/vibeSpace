@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactPlayer from 'react-player';
 import { uploadFile } from '../../api/file.ts';
 import { FileSubmit } from '../App/Interfaces/interface.ts';
 import { createRoot } from 'react-dom/client';
@@ -8,6 +9,7 @@ import { createRoot } from 'react-dom/client';
  * Handles video uploads and custom video URLs from backend
  */
 
+// TODOS add props onComplete video, phase 2 -> seek prevention
 interface VideoData {
   url: string;
   caption: string;
@@ -27,7 +29,7 @@ interface VideoToolProps {
   onDataChange: (data: VideoData) => void;
 }
 
-const VideoComponent: React.FC<VideoToolProps> = ({ data, config, readOnly, onDataChange }) => {
+export const VideoComponent: React.FC<VideoToolProps> = ({ data, config, readOnly, onDataChange }) => {
   const [videoData, setVideoData] = useState<VideoData>(data);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -65,20 +67,21 @@ const VideoComponent: React.FC<VideoToolProps> = ({ data, config, readOnly, onDa
   if (videoData.url) {
     return (
       <div className="w-full">
-        <div className={`relative ${videoData.stretched ? 'w-full' : 'max-w-4xl mx-auto'}`}>
-          <video
+        <div className={`relative ${videoData.stretched ? 'w-full' : 'max-w-4xl mx-auto'}`}> 
+          <ReactPlayer
             src={videoData.url}
-            poster={videoData.poster}
-            controls
-            preload="metadata"
-            className={`
-              w-full rounded-lg shadow-lg transition-all duration-200
-              ${videoData.withBorder ? 'border-2 border-gray-200 dark:border-gray-600' : ''}
-              ${videoData.withBackground ? 'bg-gray-50 dark:bg-gray-800 p-4' : ''}
-            `}
+            controls={true}
+            width="100%"
+            height={videoData.stretched ? '100%' : '360px'}
+            style={{
+              borderRadius: '0.5rem',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              border: videoData.withBorder ? '2px solid #e5e7eb' : undefined,
+              background: videoData.withBackground ? '#f9fafb' : undefined,
+              padding: videoData.withBackground ? '1rem' : undefined,
+            }}
           />
         </div>
-        
         {!readOnly && (
           <div className="mt-4 space-y-3">
             {/* Caption */}
@@ -91,7 +94,6 @@ const VideoComponent: React.FC<VideoToolProps> = ({ data, config, readOnly, onDa
                        bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
-            
             {/* Tune Options */}
             <div className="flex flex-wrap gap-2">
               <button
@@ -105,7 +107,6 @@ const VideoComponent: React.FC<VideoToolProps> = ({ data, config, readOnly, onDa
               >
                 🖼️ With Border
               </button>
-              
               <button
                 onClick={() => toggleTune('stretched')}
                 className={`px-3 py-1 text-xs rounded-full border transition-colors
@@ -117,7 +118,6 @@ const VideoComponent: React.FC<VideoToolProps> = ({ data, config, readOnly, onDa
               >
                 ↔️ Stretch
               </button>
-              
               <button
                 onClick={() => toggleTune('withBackground')}
                 className={`px-3 py-1 text-xs rounded-full border transition-colors
@@ -132,7 +132,6 @@ const VideoComponent: React.FC<VideoToolProps> = ({ data, config, readOnly, onDa
             </div>
           </div>
         )}
-        
         {videoData.caption && (
           <div className="mt-3 text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400 italic">
