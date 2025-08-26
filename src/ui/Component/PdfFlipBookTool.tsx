@@ -3,10 +3,24 @@ import { uploadFile } from '../../api/file.ts';
 import { FileSubmit } from '../App/Interfaces/interface.ts';
 import { createRoot } from 'react-dom/client';
 import HTMLFlipBook from 'react-pageflip';
-import * as pdfjsLib from 'pdfjs-dist';
-
-// Set up the worker using local file (copied by webpack)
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+// Use pdf.js from CDN only (no local pdfjs-dist)
+const PDFJS_VERSION = '5.4.54';
+type PdfJsLib = any;
+const loadPdfJs = (() => {
+  let promise: Promise<PdfJsLib> | null = null;
+  return () => {
+    if (!promise) {
+      promise = import(/* webpackIgnore: true */ `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.mjs`)
+        .then((mod: any) => {
+          if (mod?.GlobalWorkerOptions) {
+            mod.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.mjs`;
+          }
+          return mod;
+        });
+    }
+    return promise;
+  };
+})();
 
 interface PDFViewport { width: number; height: number; }
 interface PDFRenderTask { cancel: () => void; promise: Promise<void>; }
@@ -146,23 +160,28 @@ const PdfFlipBookComponent: React.FC<PdfFlipBookToolProps> = ({ data, api, readO
     if (!pdfUrl) return;
     setError(null);
     const myLoadId = ++loadIdRef.current;
-    const loadingTask = pdfjsLib.getDocument(pdfUrl);
-    loadingTask.promise
-      .then(async (pdfInstance) => {
-        if (myLoadId !== loadIdRef.current) return; // stale load ignored
-        setPdf(pdfInstance);
-        setNumPages(pdfInstance.numPages);
-        setCurrentPage(1); // Initialize current page
-        await calculateDimensions(pdfInstance);
+    let cancelled = false;
+    loadPdfJs()
+      .then((lib) => {
+        if (cancelled) return;
+        const loadingTask = lib.getDocument(pdfUrl);
+        return loadingTask.promise.then(async (pdfInstance: any) => {
+          if (cancelled || myLoadId !== loadIdRef.current) return;
+          setPdf(pdfInstance);
+          setNumPages(pdfInstance.numPages);
+          setCurrentPage(1);
+          await calculateDimensions(pdfInstance);
+        });
       })
       .catch((e: any) => {
-        if (myLoadId !== loadIdRef.current) return;
+        if (cancelled || myLoadId !== loadIdRef.current) return;
         console.error('PDF load failed', e);
         setError('Failed to load PDF.');
         setPdf(null);
         setNumPages(0);
         setCurrentPage(0);
       });
+    return () => { cancelled = true; };
   }, [pdfUrl, calculateDimensions]);
 
   // Cleanup on unmount to prevent memory leaks

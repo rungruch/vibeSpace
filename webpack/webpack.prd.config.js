@@ -6,7 +6,6 @@ const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const TerserPlugin = require("terser-webpack-plugin");
-const CopyWebpackPlugin = require('copy-webpack-plugin');
 const mode = 'production'
 const basename = 'elearning2'
 const title = 'Nano OK E-Learning'
@@ -216,14 +215,6 @@ module.exports = {
         }),
         new MiniCssExtractPlugin({
             filename: './assets/css/[contenthash:10].css'
-        }),
-        new CopyWebpackPlugin({
-            patterns: [
-                {
-                    from: 'node_modules/pdfjs-dist/build/pdf.worker.min.mjs',
-                    to: 'pdf.worker.min.js',
-                },
-            ],
         }),
         ...(process.env.ANALYZE ? [new BundleAnalyzerPlugin({ analyzerMode: 'static', openAnalyzer: false, reportFilename: 'report-prod.html' })] : [])
     ]

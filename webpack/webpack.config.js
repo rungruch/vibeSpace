@@ -3,7 +3,6 @@ const webpack = require('webpack')
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const mode = 'development'
 const title = 'Nano OK E-Learning'
@@ -201,14 +200,6 @@ module.exports = {
                 'BASE_NAME': JSON.stringify(''),
                 'DEV_MODE': JSON.stringify(mode)
             }
-        }),
-        new CopyWebpackPlugin({
-            patterns: [
-                {
-                    from: 'node_modules/pdfjs-dist/build/pdf.worker.min.mjs',
-                    to: 'pdf.worker.min.js',
-                },
-            ],
         })
     ],
     devServer: {
@@ -230,7 +221,12 @@ module.exports = {
             {
                 context: ['/elearning'],
                 target: "http://localhost:4080",
-                changeOrigin: true,
+                changeOrigin: true
+            },
+            {
+                context: ['/elearning'],
+                target: "http://tc001mfds1p",
+                changeOrigin: true
             }
         ]
     }
