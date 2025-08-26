@@ -805,11 +805,14 @@ export default function CoursesCreate() {
                   <Input placeholder="Optional password" />
                 </Form.Item>
 
-                <Form.Item label="ระยะเวลาในการเรียน (วัน)" name="enroll_duration_day">
-                  <InputNumber min={0} style={{ width: '100%' }} />
-                </Form.Item>
+                {/* // CURRENTLY NOT IMPLEMENTED DUE TO COMPLEXITY
+                */}
 
-                <Form.Item label="วันที่เริ่มต้น" name="start_date">
+                {/* <Form.Item label="ระยะเวลาในการเรียน (วัน)" name="enroll_duration_day">
+                  <InputNumber min={0} style={{ width: '100%' }} />
+                </Form.Item> */}
+
+                <Form.Item label="วันที่เริ่มต้น (ระยะเวลาที่เปิดลงทะเบียนเรียน)" name="start_date">
                   <DatePicker style={{ width: '100%' }} />
                 </Form.Item>
 
