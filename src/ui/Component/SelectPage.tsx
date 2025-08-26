@@ -37,7 +37,7 @@ const SelectPage: React.FC<SelectPageProps> = ({ visible, onClose, onSelect }) =
 
   return (
     <Modal
-      title="เลือกเพจจากระบบ"
+      title="เลือกเพจ"
       open={visible}
       onCancel={onClose}
       footer={null}
@@ -49,6 +49,14 @@ const SelectPage: React.FC<SelectPageProps> = ({ visible, onClose, onSelect }) =
         onChange={e => setSearch(e.target.value)}
         style={{ marginBottom: 16 }}
       />
+      <div style={{ marginBottom: 16, textAlign: 'right' }}>
+        <Button
+          type="primary"
+          onClick={() => window.open('/page/create', '_blank')}
+        >
+          สร้างเพจใหม่
+        </Button>
+      </div>
       <List
         loading={loading}
         dataSource={paginatedPages}

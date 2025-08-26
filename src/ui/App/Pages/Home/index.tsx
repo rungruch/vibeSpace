@@ -7,7 +7,7 @@ import { useTheme } from "../../../../context/themeContext.js";
 import { fetchAllPosts, fetchAllPostsCategory } from "../../../../api/posts.ts";
 import { PostsData, HeroSectionSettings, MainPageSettings } from "../../Interfaces/interface.ts";
 import dayjs from "dayjs";
-import NewspaperIcon from '@mui/icons-material/Newspaper';
+import { ReadOutlined as NewspaperIcon } from '@ant-design/icons';
 import { getSettings } from "../../../../api/setting.ts";
 import { SettingsGroup } from "../../../enum.ts";
 import EditorViewer from "../../../Component/EditorViewer.tsx";
@@ -236,9 +236,10 @@ export default function HomePage() {
               <div
               className={`flex flex-wrap gap-2 p-4 rounded-3xl justify-center mb-3`}
               >
-              {Object.keys(mainPageSettings)
-                .sort((a, b) => a === 'หน้าแรก' ? -1 : b === 'หน้าแรก' ? 1 : 0) // Ensures 'หน้าแรก' is first
-                .map((key) => (
+                {Object.keys(mainPageSettings)
+                  .filter(key => key === 'หน้าแรก' || (Array.isArray(mainPageSettings[key]) && mainPageSettings[key].length > 0))
+                  .sort((a, b) => a === 'หน้าแรก' ? -1 : b === 'หน้าแรก' ? 1 : 0)
+                  .map((key) => (
                 <button
                   key={key}
                   onClick={() => {
