@@ -1,4 +1,4 @@
-import { ElearningVisibility, ElearningMediaType } from "../Enum/elearning";
+import { ElearningVisibility, ElearningMediaType, ElearningProgressStatus } from "../Enum/elearning";
 
 export interface Elearning {
     id? : string;
@@ -60,6 +60,7 @@ export type ElearningModuleCreate = Omit<ElearningModule, 'id' | 'course_id'> & 
 
 // For creating a course, we omit all server-generated fields.
 // It will contain the modules to be created.
+// ElearningCoursesEnrollment
 export type ElearningCoursesCreate = Omit<Elearning, 'id' | 'rating' | 'created_at' | 'updated_at' | 'updated_by' | 'category'> & {
     modules: ElearningModuleCreate[];
     category: string[]; // keep a list of category id only for create Elearning_CoursesCategoryList
@@ -69,3 +70,17 @@ export type ElearningCourseGet = Elearning & {
     modules: ElearningModuleCreate[] | string ;
     is_enrolled: boolean;
 };
+
+export interface ElearningProgress {
+    id?: string;
+    user_id: string;
+    course_id: string;
+    module_id: string;
+    lesson_id: string;
+    status: ElearningProgressStatus;
+    attempt_count: number;
+    started_at: Date;
+    completed_at: Date | null;
+    time_spent_minute: number; // pre compute after finished lessons
+    best_quiz_score: number | null;
+}

@@ -17,3 +17,8 @@ export enum ElearningEnrollmentsStatus {
     InProgress = "in_progress",
     Expired = "expired"
 }
+
+export enum ElearningProgressStatus {
+    InProgress = "in_progress",
+    Completed = "completed"
+}
