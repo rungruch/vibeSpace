@@ -14,7 +14,14 @@ import { validate as isValidUuid } from 'uuid'
 import { App as AntdApp, message } from 'antd';
 import Loading from "../../../Component/Loading.tsx";
 
-export default function Survey() {
+
+// props for elearning 
+interface SurveyProps {
+  surveyId: string;
+  isElearning: boolean;
+}
+
+export default function Survey({ surveyId, isElearning }: SurveyProps) {
   const { setError, error } = useAppState();
   const user = useUserContext();
   const [formdata, setFormData] = useState<FormCreate | null>(null);
@@ -126,11 +133,15 @@ export default function Survey() {
   useEffect(() => {
     // Fetch form data by ID or slug
 
-    // Get ID and Slug from url
-    const formId =
-      new URLSearchParams(window.location.search).get("id") ?? null;
-    const formSlug =
-      new URLSearchParams(window.location.search).get("slug") ?? null;
+    let formId: string | null = null;
+    let formSlug: string | null = null;
+
+    if (isElearning && surveyId) {
+      formId = surveyId;
+    } else {
+      formId = new URLSearchParams(window.location.search).get("id") ?? null;
+      formSlug = new URLSearchParams(window.location.search).get("slug") ?? null;
+    }
 
     // find id or slug is exist, else render not found
     if (formId || formSlug) {
