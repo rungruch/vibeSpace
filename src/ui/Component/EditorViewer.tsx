@@ -35,10 +35,14 @@ export default function EditorViewer({ SlugProps }: EditorViewerProps) {
       }
       try {// if current route is /pages/:slug getPageByslug, if current route is /posts/:slug getPostBySlug
         let data = null;
-        if (location.pathname === `/post/${slug}`) {
-          data = await getPostBySlug(slug);
+        if (SlugProps){
+          data = await getPageBySlug(SlugProps);
+        } else if (slug) {
+          data = await getPageBySlug(slug);
         } else {
-          data = await getPageBySlug(slug ? slug : SlugProps);
+          setNotFound(true);
+          setLoading(false);
+          return;
         }
 
         setPage(data);
