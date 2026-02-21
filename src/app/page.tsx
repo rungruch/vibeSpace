@@ -123,7 +123,7 @@ export default function Home() {
     <main className="min-h-screen p-6 sm:p-12 relative overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors">
 
       {/* Background decorations */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+      <div className="fixed inset-0 overflow-clip pointer-events-none z-0">
         <AnimatePresence>
           <motion.div
             key="bg-blob-1"
@@ -132,7 +132,7 @@ export default function Home() {
               scale: resolvedTheme === "light" ? 1 : 1.2,
             }}
             transition={{ duration: 0.8 }}
-            className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full blur-3xl"
+            className="absolute top-[-10%] left-[-10%] w-64 h-64 sm:w-96 sm:h-96 rounded-full blur-3xl"
           />
           <motion.div
             key="bg-blob-2"
@@ -141,7 +141,7 @@ export default function Home() {
               scale: resolvedTheme === "light" ? 1 : 1.2,
             }}
             transition={{ duration: 0.8 }}
-            className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full blur-3xl"
+            className="absolute bottom-[-10%] right-[-10%] w-64 h-64 sm:w-96 sm:h-96 rounded-full blur-3xl"
           />
         </AnimatePresence>
       </div>
