@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
+import { LoginModal } from "@/components/LoginModal";
 
 // Dynamically import the form builder to ensure it only runs on the client
 const FormBuilder = dynamic(() => import("@/components/form/FormBuilder"), {
@@ -32,10 +33,7 @@ function CreateFormContent() {
 
     useEffect(() => {
         setIsClient(true);
-        if (!loading && !user) {
-            router.push("/login");
-        }
-    }, [user, loading, router]);
+    }, []);
 
     useEffect(() => {
         if (!user || !editId) return;
@@ -65,7 +63,7 @@ function CreateFormContent() {
         fetchDoc();
     }, [user, editId, router]);
 
-    if (!isClient || loading || !user || fetching) {
+    if (!isClient || loading || fetching) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
                 <Loader2 className="animate-spin text-indigo-500 w-8 h-8" />
@@ -100,6 +98,7 @@ function CreateFormContent() {
                     editId={editId}
                     initialSchema={initialSchema}
                 />
+                <LoginModal />
             </div>
         </main>
     );

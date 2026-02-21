@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
-import { MoveRight, FileText, FileSpreadsheet, LogOut, PlusCircle, Calendar, ArrowRight, Loader2, Trash2, Pencil, Share2, Check, BarChart } from "lucide-react";
+import { MoveRight, FileText, FileSpreadsheet, LogOut, PlusCircle, Calendar, ArrowRight, Loader2, Trash2, Pencil, Share2, Check, BarChart, LogIn } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -13,9 +13,10 @@ import { format } from "date-fns";
 import { motion, Variants, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LoginModal } from "@/components/LoginModal";
 
 export default function Home() {
-  const { user, logOut, loading } = useAuth();
+  const { user, logOut, loading, setShowLoginModal } = useAuth();
   const { resolvedTheme } = useTheme();
   const router = useRouter();
 
@@ -25,10 +26,10 @@ export default function Home() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login");
+    if (!loading && user) {
+      fetchData();
     }
-  }, [user, loading, router]);
+  }, [user, loading]);
 
   const fetchData = async () => {
     if (!user) {
@@ -98,7 +99,7 @@ export default function Home() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  if (loading || !user) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <Loader2 className="animate-spin text-blue-500 w-8 h-8" />
@@ -155,25 +156,35 @@ export default function Home() {
         <div className="flex items-center gap-4">
           <ThemeToggle />
 
-          <div className="flex items-center gap-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md px-4 py-2 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
-            <div className="flex items-center gap-2">
-              {user.photoURL ? (
-                <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full shadow-sm" />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
-                  {user.displayName?.charAt(0) || "U"}
-                </div>
-              )}
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300 hidden sm:block">
-                {user.displayName?.split(" ")[0]}
-              </span>
+          {user ? (
+            <div className="flex items-center gap-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md px-4 py-2 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
+              <div className="flex items-center gap-2">
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full shadow-sm" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
+                    {user.displayName?.charAt(0) || "U"}
+                  </div>
+                )}
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 hidden sm:block">
+                  {user.displayName?.split(" ")[0]}
+                </span>
+              </div>
+              <div className="w-px h-6 bg-slate-300 dark:bg-slate-700" />
+              <Button variant="ghost" size="sm" onClick={logOut} className="text-slate-500 hover:text-red-500 px-2 h-8">
+                <LogOut className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Logout</span>
+              </Button>
             </div>
-            <div className="w-px h-6 bg-slate-300 dark:bg-slate-700" />
-            <Button variant="ghost" size="sm" onClick={logOut} className="text-slate-500 hover:text-red-500 px-2 h-8">
-              <LogOut className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">Logout</span>
+          ) : (
+            <Button
+              onClick={() => setShowLoginModal(true)}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md shadow-blue-500/20 rounded-full px-5 h-10"
+            >
+              <LogIn className="w-4 h-4 mr-2" />
+              Sign In
             </Button>
-          </div>
+          )}
         </div>
       </div>
 
@@ -242,7 +253,30 @@ export default function Home() {
             {fetchingData && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
           </h2>
 
-          {!fetchingData && pages.length === 0 && forms.length === 0 && (
+          {!user && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex-1 border-2 border-dashed border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-900/30 backdrop-blur-sm rounded-3xl flex flex-col items-center justify-center p-12 text-center"
+            >
+              <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
+                <LogIn className="text-slate-400 w-10 h-10" />
+              </div>
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-3">Sign in to see your library</h3>
+              <p className="text-slate-500 dark:text-slate-400 max-w-sm text-base mb-6">
+                Your saved pages and forms will appear here after you sign in.
+              </p>
+              <Button
+                onClick={() => setShowLoginModal(true)}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md shadow-blue-500/20 rounded-full px-6 h-10"
+              >
+                <LogIn className="w-4 h-4 mr-2" />
+                Sign In with Google
+              </Button>
+            </motion.div>
+          )}
+
+          {user && !fetchingData && pages.length === 0 && forms.length === 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -258,7 +292,7 @@ export default function Home() {
             </motion.div>
           )}
 
-          <motion.div
+          {user && <motion.div
             key={pages.length + forms.length}
             className="grid grid-cols-1 sm:grid-cols-2 gap-4"
             variants={containerVariants}
@@ -380,9 +414,10 @@ export default function Home() {
                 </div>
               </motion.div>
             ))}
-          </motion.div>
+          </motion.div>}
         </div>
       </div>
+      <LoginModal />
     </main>
   );
 }

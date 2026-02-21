@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/Input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { LoginModal } from "@/components/LoginModal";
 
 const Editor = dynamic(() => import("@/components/editor/Editor"), {
     ssr: false,
@@ -21,7 +22,7 @@ const Editor = dynamic(() => import("@/components/editor/Editor"), {
 });
 
 function CreatePageContent() {
-    const { user, loading } = useAuth();
+    const { user, loading, setShowLoginModal } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
     const editId = searchParams.get("edit");
@@ -34,10 +35,7 @@ function CreatePageContent() {
 
     useEffect(() => {
         setIsClient(true);
-        if (!loading && !user) {
-            router.push("/login"); // Guard for Editor page directly
-        }
-    }, [user, loading, router]);
+    }, []);
 
     useEffect(() => {
         if (!user || !editId) return;
@@ -69,7 +67,10 @@ function CreatePageContent() {
     }, [user, editId, router]);
 
     const handleSave = async (data: any) => {
-        if (!user) return;
+        if (!user) {
+            setShowLoginModal(true);
+            return;
+        }
         setSaving(true);
         try {
             if (editId) {
@@ -98,7 +99,7 @@ function CreatePageContent() {
         }
     };
 
-    if (!isClient || loading || !user || fetching) {
+    if (!isClient || loading || fetching) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
                 <Loader2 className="animate-spin text-blue-500 w-8 h-8" />
@@ -144,6 +145,7 @@ function CreatePageContent() {
             </div>
 
             <Editor onSave={handleSave} initialData={initialData} />
+            <LoginModal />
         </main>
     );
 }

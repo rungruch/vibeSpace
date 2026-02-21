@@ -64,11 +64,14 @@ export default function FormBuilder({ onSave, editId, initialSchema }: FormBuild
         setQuestions(updated);
     };
 
-    const { user } = useAuth();
+    const { user, setShowLoginModal } = useAuth();
     const [saving, setSaving] = useState(false);
 
     const handleSave = async () => {
-        if (!user) return;
+        if (!user) {
+            setShowLoginModal(true);
+            return;
+        }
         setSaving(true);
         const schema = {
             title,
