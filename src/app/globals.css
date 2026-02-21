@@ -6,6 +6,11 @@
   --foreground: #0f172a;
 }
 
+.dark {
+  --background: #0f172a;
+  --foreground: #f8fafc;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -13,12 +18,8 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f172a;
-    --foreground: #f8fafc;
-  }
-}
+/* Enable class-based dark mode for dark: utilities in Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
 
 body {
   background: var(--background);

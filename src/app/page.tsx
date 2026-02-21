@@ -10,10 +10,13 @@ import { Button } from "@/components/ui/Button";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, getDocs, doc, deleteDoc } from "firebase/firestore";
 import { format } from "date-fns";
-import { motion, Variants } from "framer-motion";
+import { motion, Variants, AnimatePresence } from "framer-motion";
+import { useTheme } from "next-themes";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Home() {
   const { user, logOut, loading } = useAuth();
+  const { resolvedTheme } = useTheme();
   const router = useRouter();
 
   const [pages, setPages] = useState<any[]>([]);
@@ -110,8 +113,26 @@ export default function Home() {
 
       {/* Background decorations */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-100/50 dark:bg-blue-900/20 blur-3xl" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-100/50 dark:bg-indigo-900/20 blur-3xl" />
+        <AnimatePresence>
+          <motion.div
+            key="bg-blob-1"
+            animate={{
+              backgroundColor: resolvedTheme === "light" ? "rgba(219, 234, 254, 0.5)" : "rgba(30, 58, 138, 0.2)",
+              scale: resolvedTheme === "light" ? 1 : 1.2,
+            }}
+            transition={{ duration: 0.8 }}
+            className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full blur-3xl"
+          />
+          <motion.div
+            key="bg-blob-2"
+            animate={{
+              backgroundColor: resolvedTheme === "light" ? "rgba(224, 231, 255, 0.5)" : "rgba(49, 46, 129, 0.2)",
+              scale: resolvedTheme === "light" ? 1 : 1.2,
+            }}
+            transition={{ duration: 0.8 }}
+            className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full blur-3xl"
+          />
+        </AnimatePresence>
       </div>
 
       <div className="relative z-10 w-full mb-16 max-w-7xl mx-auto flex items-center justify-between">
@@ -120,24 +141,28 @@ export default function Home() {
           <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Workspace</span>
         </div>
 
-        <div className="flex items-center gap-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md px-4 py-2 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="flex items-center gap-2">
-            {user.photoURL ? (
-              <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full shadow-sm" />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
-                {user.displayName?.charAt(0) || "U"}
-              </div>
-            )}
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300 hidden sm:block">
-              {user.displayName?.split(" ")[0]}
-            </span>
+        <div className="flex items-center gap-4">
+          <ThemeToggle />
+
+          <div className="flex items-center gap-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md px-4 py-2 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center gap-2">
+              {user.photoURL ? (
+                <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full shadow-sm" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
+                  {user.displayName?.charAt(0) || "U"}
+                </div>
+              )}
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300 hidden sm:block">
+                {user.displayName?.split(" ")[0]}
+              </span>
+            </div>
+            <div className="w-px h-6 bg-slate-300 dark:bg-slate-700" />
+            <Button variant="ghost" size="sm" onClick={logOut} className="text-slate-500 hover:text-red-500 px-2 h-8">
+              <LogOut className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Logout</span>
+            </Button>
           </div>
-          <div className="w-px h-6 bg-slate-300 dark:bg-slate-700" />
-          <Button variant="ghost" size="sm" onClick={logOut} className="text-slate-500 hover:text-red-500 px-2 h-8">
-            <LogOut className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Logout</span>
-          </Button>
         </div>
       </div>
 
