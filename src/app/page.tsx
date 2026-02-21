@@ -303,7 +303,7 @@ export default function Home() {
               <motion.div key={page.id} variants={itemVariants} className="relative group/card h-full">
                 <Link href={`/pages/${page.id}`} className="block h-full">
                   <Card className="h-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 hover:border-blue-500/50 dark:hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/5 transition-all">
-                    <div className="p-5">
+                    <div className="pl-5 pr-5 pt-3 pb-3">
                       <div className="flex items-center gap-4">
                         <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl shrink-0">
                           <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -321,7 +321,7 @@ export default function Home() {
                     </div>
                   </Card>
                 </Link>
-                <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity z-20">
+                <div className="absolute top-2 right-2 flex items-center gap-1 sm:opacity-0 sm:group-hover/card:opacity-100 transition-opacity z-20">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -354,7 +354,7 @@ export default function Home() {
               <motion.div key={form.id} variants={itemVariants} className="relative group/card h-full">
                 <Link href={`/forms/${form.id}`} className="block h-full">
                   <Card className="h-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 hover:border-indigo-500/50 dark:hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/5 transition-all">
-                    <div className="p-6">
+                    <div className="pl-5 pr-5 pt-3 pb-3">
                       <div className="flex items-center gap-4">
                         <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl shrink-0">
                           <FileSpreadsheet className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
@@ -372,7 +372,7 @@ export default function Home() {
                     </div>
                   </Card>
                 </Link>
-                <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity z-20">
+                <div className="absolute top-2 right-2 flex items-center gap-1 sm:opacity-0 sm:group-hover/card:opacity-100 transition-opacity z-20">
                   <Button
                     variant="ghost"
                     size="icon"
