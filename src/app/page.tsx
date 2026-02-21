@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
-import { MoveRight, FileText, FileSpreadsheet, LogOut, PlusCircle, Calendar, ArrowRight, Loader2, Trash2, Pencil, Share2, Check } from "lucide-react";
+import { MoveRight, FileText, FileSpreadsheet, LogOut, PlusCircle, Calendar, ArrowRight, Loader2, Trash2, Pencil, Share2, Check, BarChart } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -344,8 +344,22 @@ export default function Home() {
                     size="icon"
                     className="h-8 w-8 text-slate-400 hover:text-green-500 hover:bg-white dark:hover:bg-slate-800 rounded-full shadow-sm"
                     onClick={(e) => handleShare(e, "forms", form.id)}
+                    title="Copy Share Link"
                   >
                     {copiedId === form.id ? <Check className="w-4 h-4 text-green-500" /> : <Share2 className="w-4 h-4" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-slate-400 hover:text-amber-500 hover:bg-white dark:hover:bg-slate-800 rounded-full shadow-sm"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      router.push(`/forms/${form.id}/responses`);
+                    }}
+                    title="View Responses"
+                  >
+                    <BarChart className="w-4 h-4" />
                   </Button>
                   <Button
                     variant="ghost"
