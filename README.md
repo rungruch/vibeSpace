@@ -1,5 +1,14 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Branch Structure
+
+| Branch   | Purpose |
+|----------|---------|
+| `public` | Default branch – stable snapshot shown to visitors |
+| `main`   | Active development |
+
+The `public` branch is automatically kept in sync with `main` via a GitHub Actions workflow. See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for details on changing the default branch and controlling what is publicly featured.
+
 ## Getting Started
 
 First, run the development server:
