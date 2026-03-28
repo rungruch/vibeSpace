@@ -41,7 +41,7 @@ export default function PageViewer() {
                     setPageData(docSnap.data());
                 } else {
                     console.error("No such document!");
-                    router.push("/");
+                    router.push("/workspace");
                 }
             } catch (error) {
                 console.error("Error fetching page:", error);
@@ -67,7 +67,7 @@ export default function PageViewer() {
         <main className="min-h-screen p-6 sm:p-12 transition-colors duration-300 bg-slate-50 dark:bg-slate-950">
             <div className="max-w-4xl mx-auto mb-8">
                 <Link
-                    href="/"
+                    href="/workspace"
                     className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 mb-8 transition-colors bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-2 rounded-full shadow-sm hover:shadow-md"
                 >
                     <ArrowLeft className="mr-2 h-4 w-4" />

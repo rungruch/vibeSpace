@@ -76,7 +76,7 @@ function CreateFormContent() {
             <div className="max-w-6xl mx-auto">
                 <div className="mb-8 flex items-center justify-between">
                     <Link
-                        href="/"
+                        href="/workspace"
                         className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-colors"
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -94,7 +94,7 @@ function CreateFormContent() {
                 </div>
 
                 <FormBuilder
-                    onSave={() => router.push("/")}
+                    onSave={() => router.push("/workspace")}
                     editId={editId}
                     initialSchema={initialSchema}
                 />

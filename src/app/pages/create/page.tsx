@@ -90,7 +90,7 @@ function CreatePageContent() {
                 });
                 console.log("Document written with ID: ", docRef.id);
             }
-            router.push("/");
+            router.push("/workspace");
         } catch (e) {
             console.error("Error saving document: ", e);
             alert("Failed to save page.");
@@ -111,7 +111,7 @@ function CreatePageContent() {
         <main className="min-h-screen p-6 sm:p-12 transition-colors duration-300">
             <div className="max-w-4xl mx-auto mb-8">
                 <Link
-                    href="/"
+                    href="/workspace"
                     className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 mb-6 transition-colors"
                 >
                     <ArrowLeft className="mr-2 h-4 w-4" />
