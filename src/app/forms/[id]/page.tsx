@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useParams, useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { ArrowLeft, Loader2, Calendar } from "lucide-react";
@@ -11,12 +12,14 @@ import { format } from "date-fns";
 import { Model } from "survey-core";
 import { Survey } from "survey-react-ui";
 import "survey-core/survey-core.min.css";
+import { LayeredDark } from "survey-core/themes";
 import { Card, CardContent } from "@/components/ui/Card";
 
 export default function FormViewer() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
     const params = useParams();
+    const { resolvedTheme } = useTheme();
 
     const [formData, setFormData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -68,6 +71,12 @@ export default function FormViewer() {
 
         fetchForm();
     }, [user, params.id, router]);
+
+    useEffect(() => {
+        if (surveyModel && resolvedTheme === "dark") {
+            surveyModel.applyTheme(LayeredDark);
+        }
+    }, [surveyModel, resolvedTheme]);
 
     if (authLoading || loading) {
         return (
