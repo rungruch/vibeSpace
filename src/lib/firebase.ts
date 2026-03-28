@@ -4,13 +4,13 @@ import { getStorage } from "firebase/storage";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyBZY66dq48nzmtcTBgOcL2wPRxS61oW7v4",
-    authDomain: "vibespace-2fd9e.firebaseapp.com",
-    projectId: "vibespace-2fd9e",
-    storageBucket: "vibespace-2fd9e.firebasestorage.app",
-    messagingSenderId: "696205443161",
-    appId: "1:696205443161:web:14e8739daa6b6d32f57148",
-    measurementId: "G-72B6896QXB"
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
