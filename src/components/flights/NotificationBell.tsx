@@ -6,7 +6,7 @@ import { Bell, X, Plane, AlertTriangle, CheckCircle2, XCircle, ArrowRightLeft, C
 import { FlightNotification } from "@/types/flight";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, writeBatch, limit } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, writeBatch, limit, getDocs, deleteDoc } from "firebase/firestore";
 
 const NOTIFICATION_ICONS: Record<string, React.ReactNode> = {
   status_change: <ArrowRightLeft className="w-4 h-4" />,
@@ -74,6 +74,32 @@ export function NotificationBell() {
     if (!user) return;
     await updateDoc(doc(db, "users", user.uid, "notifications", notifId), { read: true });
   };
+
+  const [clearing, setClearing] = useState(false);
+
+  const clearAll = useCallback(async () => {
+    if (!user || notifications.length === 0 || clearing) return;
+    setClearing(true);
+
+    // Optimistically clear UI immediately
+    const toDelete = [...notifications];
+    setNotifications([]);
+    setHasNew(false);
+
+    try {
+      const batch = writeBatch(db);
+      toDelete.forEach((n) => {
+        batch.delete(doc(db, "users", user.uid, "notifications", n.id));
+      });
+      await batch.commit();
+    } catch (error) {
+      console.error("Failed to clear notifications:", error);
+      // Restore on failure
+      setNotifications(toDelete);
+    } finally {
+      setClearing(false);
+    }
+  }, [user, notifications, clearing]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -146,12 +172,22 @@ export function NotificationBell() {
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
                 <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Flight Notifications</h3>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <X className="w-4 h-4 text-slate-400" />
-                </button>
+                <div className="flex items-center gap-1">
+                  {notifications.length > 0 && (
+                    <button
+                      onClick={clearAll}
+                      className="text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 px-2 py-1 rounded-lg transition-colors"
+                    >
+                      Clear All
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <X className="w-4 h-4 text-slate-400" />
+                  </button>
+                </div>
               </div>
 
               {/* List */}

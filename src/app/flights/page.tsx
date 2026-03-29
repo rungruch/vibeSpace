@@ -320,22 +320,7 @@ export default function FlightsPage() {
           </div>
         )}
 
-        {/* Demo mode banner */}
-        {user && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
-            className="mt-12 text-center"
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50">
-              <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              <span className="text-xs text-amber-700 dark:text-amber-300 font-medium">
-                Demo Mode — Using mock flight data. Connect AeroDataBox API for live updates.
-              </span>
-            </div>
-          </motion.div>
-        )}
+
       </div>
 
       <LoginModal />

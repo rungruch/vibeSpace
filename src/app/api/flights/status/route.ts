@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { refreshFlightStatusMock } from "@/lib/mockFlightData";
+
 import { Flight, FlightStatus } from "@/types/flight";
 
 export async function POST(request: NextRequest) {
@@ -88,19 +88,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fallback to mock
-    const updated = refreshFlightStatusMock(flight);
-    return NextResponse.json({
-      updated: true,
-      changes: {
-        status: updated.status,
-        lastApiUpdate: updated.lastApiUpdate,
-        departure: updated.departure,
-        arrival: updated.arrival,
-      },
-      previousStatus: flight.status,
-      newStatus: updated.status,
-    });
+    return NextResponse.json(
+      { error: "AeroDataBox API key is not configured" },
+      { status: 500 }
+    );
   } catch (error) {
     console.error("Status refresh error:", error);
     return NextResponse.json({ error: "Failed to refresh status" }, { status: 500 });

@@ -15,7 +15,6 @@ import {
   Plane, Search, Loader2, Info, Sparkles, X, Calendar, Clock, CheckCircle2
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import { DEMO_FLIGHT_NUMBERS } from "@/lib/mockFlightData";
 
 interface AddFlightModalProps {
   isOpen: boolean;
@@ -206,14 +205,7 @@ export function AddFlightModal({ isOpen, onClose }: AddFlightModalProps) {
                     </Button>
                   </form>
 
-                  {/* Demo hint */}
-                  <div className="mt-5 flex items-start gap-2 p-3 rounded-xl bg-sky-50 dark:bg-sky-900/20 border border-sky-200/50 dark:border-sky-800/50">
-                    <Sparkles className="w-4 h-4 text-sky-500 mt-0.5 shrink-0" />
-                    <div className="text-xs text-sky-700 dark:text-sky-300">
-                      <span className="font-semibold">Demo mode: </span>
-                      Try these flights: <span className="font-mono bg-sky-100 dark:bg-sky-800 px-1 py-0.5 rounded">{DEMO_FLIGHT_NUMBERS.join(", ")}</span>
-                    </div>
-                  </div>
+
                 </div>
               </Card>
 

@@ -89,9 +89,9 @@ export async function GET(request: NextRequest) {
         status: mapAeroDataBoxStatus(apiData.status),
         aircraft: apiData.aircraft
           ? {
-              model: apiData.aircraft.model || undefined,
-              registration: apiData.aircraft.reg || undefined,
-            }
+            model: apiData.aircraft.model || undefined,
+            registration: apiData.aircraft.reg || undefined,
+          }
           : undefined,
         duration: apiData.greatCircleDistance?.time || undefined,
         lastApiUpdate: new Date().toISOString(),

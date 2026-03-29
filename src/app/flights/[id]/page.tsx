@@ -33,6 +33,7 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
   const [refreshing, setRefreshing] = useState(false);
   const [notes, setNotes] = useState("");
   const [showNotes, setShowNotes] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   // Real-time listener
   useEffect(() => {
@@ -96,13 +97,20 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
 
   const handleDelete = async () => {
     if (!user || !flight) return;
-    if (!confirm("Remove this flight from your tracked flights?")) return;
+
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      // Auto-reset after 3 seconds if user doesn't confirm
+      setTimeout(() => setConfirmDelete(false), 3000);
+      return;
+    }
 
     try {
       await deleteDoc(doc(db, "users", user.uid, "flights", flight.id));
       router.push("/flights");
     } catch (error) {
       console.error("Failed to delete flight:", error);
+      setConfirmDelete(false);
     }
   };
 
@@ -440,10 +448,14 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
             <Button
               variant="ghost"
               onClick={handleDelete}
-              className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full px-4 h-9 text-sm"
+              className={`rounded-full px-4 h-9 text-sm transition-all ${
+                confirmDelete
+                  ? "bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/20"
+                  : "text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+              }`}
             >
               <Trash2 className="w-4 h-4 mr-1.5" />
-              Remove Flight
+              {confirmDelete ? "Tap to Confirm" : "Remove Flight"}
             </Button>
           </div>
         </motion.div>
