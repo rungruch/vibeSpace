@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, updateDoc, addDoc, query, where, serverTimestamp } from "firebase/firestore";
+import { doc, updateDoc, addDoc, collection } from "firebase/firestore";
 import { Flight, FlightNotification } from "@/types/flight";
 
 // Request browser notification permission
@@ -111,28 +111,38 @@ export function useFlightNotifications({
 }: UseFlightNotificationsProps) {
   const { user } = useAuth();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const flightsRef = useRef(flights);
+
+  useEffect(() => {
+    flightsRef.current = flights;
+  }, [flights]);
 
   const checkForUpdates = useCallback(async () => {
-    if (!user || !enabled || flights.length === 0) return;
+    const currentFlights = flightsRef.current;
+    if (!user || !enabled || currentFlights.length === 0) return;
 
     // Only check upcoming/active flights
-    const activeFlights = flights.filter((f) =>
+    const activeFlights = currentFlights.filter((f) =>
       ["scheduled", "boarding", "departed", "in_air", "delayed"].includes(f.status)
     );
 
     for (const flight of activeFlights) {
       try {
+        const token = await user.getIdToken();
         const response = await fetch("/api/flights/status", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
           body: JSON.stringify({ flight }),
         });
 
         if (!response.ok) continue;
         const data = await response.json();
 
-        if (data.updated && data.previousStatus !== data.newStatus) {
-          // Detect all changes
+        if (data.updated && data.changes) {
+          // Detect all changes (status, gate, etc.)
           const notifs = detectChanges(flight, data.changes);
 
           for (const notif of notifs) {
@@ -156,7 +166,7 @@ export function useFlightNotifications({
         console.error(`Failed to check flight ${flight.flightNumber}:`, error);
       }
     }
-  }, [user, flights, enabled]);
+  }, [user, enabled]);
 
   useEffect(() => {
     if (!enabled || !user) return;

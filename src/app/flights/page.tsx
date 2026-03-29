@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
@@ -13,18 +13,14 @@ import { useFlightNotifications } from "@/lib/flightNotifications";
 import { Button } from "@/components/ui/Button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LoginModal } from "@/components/LoginModal";
-import { motion, AnimatePresence, Variants } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import {
-  Plane, PlusCircle, ArrowLeft, Loader2, LogIn, LogOut,
+  Plane, PlusCircle, Loader2, LogIn, LogOut,
   MapPin, Clock, CalendarDays, Wifi, WifiOff, Search
 } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { parseISO } from "date-fns";
 
 export default function FlightsPage() {
   const { user, loading, setShowLoginModal, logOut } = useAuth();
-  const router = useRouter();
   const [showAddModal, setShowAddModal] = useState(false);
   const [flights, setFlights] = useState<(Flight & { id: string })[]>([]);
   const [fetchingData, setFetchingData] = useState(true);
@@ -78,13 +74,16 @@ export default function FlightsPage() {
     .sort((a, b) => new Date(b.departure.times.scheduled).getTime() - new Date(a.departure.times.scheduled).getTime());
 
   // Stats
-  const totalFlights = pastFlights.length;
+  const flownFlights = flights.filter(f => f.status === "landed" || f.status === "arrived");
+  const totalFlights = flownFlights.length;
+  
   const uniqueAirports = new Set([
-    ...flights.map((f) => f.departure.iata),
-    ...flights.map((f) => f.arrival.iata),
+    ...flownFlights.map((f) => f.departure.iata),
+    ...flownFlights.map((f) => f.arrival.iata),
   ]).size;
+  
   const totalHours = Math.round(
-    flights.reduce((sum, f) => sum + (f.duration || 0), 0) / 60
+    flownFlights.reduce((sum, f) => sum + (f.duration || 0), 0) / 60
   );
 
   const containerVariants: Variants = {

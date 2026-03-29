@@ -18,7 +18,7 @@ import { motion } from "framer-motion";
 import {
   Plane, ArrowLeft, Loader2, Trash2, RefreshCw,
   Clock, Calendar, MapPin, Navigation, Info,
-  Building2, DoorOpen, Luggage, StickyNote
+  Building2, DoorOpen, Luggage, StickyNote, Check
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -32,8 +32,42 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [notes, setNotes] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [savedNotes, setSavedNotes] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const refreshStatus = useCallback(async () => {
+    if (!flight || !user) return;
+    setRefreshing(true);
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/flights/status", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ flight }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.updated && data.changes) {
+          const flightRef = doc(db, "users", user.uid, "flights", flight.id);
+          await updateDoc(flightRef, {
+            ...data.changes,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to refresh status:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [flight, user]);
 
   // Real-time listener
   useEffect(() => {
@@ -57,7 +91,6 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
     return () => unsubscribe();
   }, [user, id]);
 
-  // Auto-refresh active flights
   useEffect(() => {
     if (!flight || !user) return;
     const isActive = ["scheduled", "boarding", "departed", "in_air", "delayed"].includes(flight.status);
@@ -65,35 +98,7 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
 
     const interval = setInterval(() => refreshStatus(), 60000);
     return () => clearInterval(interval);
-  }, [flight, user]);
-
-  const refreshStatus = async () => {
-    if (!flight || !user) return;
-    setRefreshing(true);
-
-    try {
-      const response = await fetch("/api/flights/status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ flight }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.updated && data.changes) {
-          const flightRef = doc(db, "users", user.uid, "flights", flight.id);
-          await updateDoc(flightRef, {
-            ...data.changes,
-            updatedAt: new Date().toISOString(),
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Failed to refresh status:", error);
-    } finally {
-      setRefreshing(false);
-    }
-  };
+  }, [flight, user, refreshStatus]);
 
   const handleDelete = async () => {
     if (!user || !flight) return;
@@ -116,13 +121,18 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
 
   const handleSaveNotes = async () => {
     if (!user || !flight) return;
+    setSavingNotes(true);
     try {
       await updateDoc(doc(db, "users", user.uid, "flights", flight.id), {
         notes,
         updatedAt: new Date().toISOString(),
       });
+      setSavedNotes(true);
+      setTimeout(() => setSavedNotes(false), 2000);
     } catch (error) {
       console.error("Failed to save notes:", error);
+    } finally {
+      setSavingNotes(false);
     }
   };
 
@@ -418,7 +428,11 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
                 <span className="flex items-center gap-2">
                   <StickyNote className="w-4 h-4" /> Notes
                 </span>
-                <span className="text-xs normal-case font-normal">{showNotes ? "Hide" : "Show"}</span>
+                <span className="flex items-center gap-2 text-xs normal-case font-normal">
+                  {savingNotes && <Loader2 className="w-3 h-3 animate-spin text-slate-400" />}
+                  {savedNotes && <Check className="w-3 h-3 text-emerald-500" />}
+                  {showNotes ? "Hide" : "Show"}
+                </span>
               </button>
 
               {showNotes && (

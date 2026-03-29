@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchFlightMock } from "@/lib/mockFlightData";
 import { FlightStatus } from "@/types/flight";
+import { mapAeroDataBoxStatus, calculateFlightDuration } from "@/lib/flightUtils";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -14,13 +14,25 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // 1. Simple Frontend Token Check (Deter casual bot abuse)
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return NextResponse.json({ found: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  // 2. Input sanitization for `date`
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return NextResponse.json({ found: false, error: "Invalid date format. Expected YYYY-MM-DD" }, { status: 400 });
+  }
+  const safeDate = encodeURIComponent(date);
+
   const apiKey = process.env.AERODATABOX_API_KEY;
 
   // Use real API if key is configured
   if (apiKey) {
     try {
       const response = await fetch(
-        `https://aerodatabox.p.rapidapi.com/flights/number/${encodeURIComponent(flightNumber)}/${date}`,
+        `https://aerodatabox.p.rapidapi.com/flights/number/${encodeURIComponent(flightNumber)}/${safeDate}`,
         {
           headers: {
             "x-rapidapi-key": apiKey,
@@ -44,8 +56,16 @@ export async function GET(request: NextRequest) {
 
       // Normalize AeroDataBox response to our Flight type
       const apiData = Array.isArray(data) ? data[0] : data;
+      const iata = apiData.airline?.iata || "";
+      const rawNumber = apiData.number || flightNumber;
+      
+      // Prevent double IATA string (e.g., 'TGTG925')
+      const cleanNumber = rawNumber.startsWith(iata) && iata !== "" 
+        ? rawNumber.substring(iata.length) 
+        : rawNumber;
+
       const flight = {
-        flightNumber: `${apiData.airline?.iata || ""}${apiData.number || flightNumber}`,
+        flightNumber: `${iata}${cleanNumber}`,
         date,
         airline: {
           name: apiData.airline?.name || "Unknown",
@@ -93,7 +113,11 @@ export async function GET(request: NextRequest) {
             registration: apiData.aircraft.reg || undefined,
           }
           : undefined,
-        duration: apiData.greatCircleDistance?.time || undefined,
+        duration: calculateFlightDuration(
+          apiData.departure?.scheduledTime?.utc,
+          apiData.arrival?.scheduledTime?.utc,
+          apiData.greatCircleDistance?.time
+        ),
         lastApiUpdate: new Date().toISOString(),
       };
 
@@ -107,22 +131,8 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Fallback to mock data
-  const result = searchFlightMock(flightNumber, date);
-  return NextResponse.json(result);
-}
-
-function mapAeroDataBoxStatus(status: string | undefined): FlightStatus {
-  if (!status) return "unknown";
-  const s = status.toLowerCase();
-  if (s.includes("scheduled") || s.includes("expected")) return "scheduled";
-  if (s.includes("boarding")) return "boarding";
-  if (s.includes("departed") || s.includes("taxiing")) return "departed";
-  if (s.includes("airborne") || s.includes("en route") || s.includes("cruise")) return "in_air";
-  if (s.includes("landed") || s.includes("approaching")) return "landed";
-  if (s.includes("arrived")) return "arrived";
-  if (s.includes("cancel")) return "cancelled";
-  if (s.includes("delay")) return "delayed";
-  if (s.includes("divert")) return "diverted";
-  return "unknown";
+  return NextResponse.json(
+    { found: false, error: "AeroDataBox API key is not configured. Add AERODATABOX_API_KEY to .env.local" },
+    { status: 500 }
+  );
 }

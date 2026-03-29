@@ -35,14 +35,25 @@ export function AddFlightModal({ isOpen, onClose }: AddFlightModalProps) {
     e.preventDefault();
     if (!flightNumber.trim() || !date) return;
 
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+
     setSearching(true);
     setResult(null);
     setError("");
     setSaved(false);
 
     try {
+      const token = await user.getIdToken();
       const response = await fetch(
-        `/api/flights/search?flightNumber=${encodeURIComponent(flightNumber.trim())}&date=${date}`
+        `/api/flights/search?flightNumber=${encodeURIComponent(flightNumber.trim())}&date=${date}`,
+        {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        }
       );
       const data: FlightSearchResult = await response.json();
 
@@ -56,6 +67,17 @@ export function AddFlightModal({ isOpen, onClose }: AddFlightModalProps) {
     } finally {
       setSearching(false);
     }
+  };
+
+  const handleClose = () => {
+    onClose();
+    setTimeout(() => {
+      setFlightNumber("");
+      setDate(format(new Date(), "yyyy-MM-dd"));
+      setResult(null);
+      setSaved(false);
+      setError("");
+    }, 300);
   };
 
   const handleTrackFlight = async () => {
@@ -79,11 +101,7 @@ export function AddFlightModal({ isOpen, onClose }: AddFlightModalProps) {
 
       // Close modal after showing success state
       setTimeout(() => {
-        onClose();
-        // Reset state
-        setFlightNumber("");
-        setResult(null);
-        setSaved(false);
+        handleClose();
       }, 1500);
     } catch (err) {
       console.error("Failed to save flight:", err);
@@ -114,7 +132,7 @@ export function AddFlightModal({ isOpen, onClose }: AddFlightModalProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm transition-opacity"
-            onClick={onClose}
+            onClick={handleClose}
           />
 
           {/* Bottom Sheet / Modal Panel */}
@@ -145,7 +163,7 @@ export function AddFlightModal({ isOpen, onClose }: AddFlightModalProps) {
                     <p className="text-xs text-slate-500 dark:text-slate-400">Search and track your journey</p>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full w-9 h-9 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0">
+                <Button variant="ghost" size="icon" onClick={handleClose} className="rounded-full w-9 h-9 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0">
                   <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
                 </Button>
               </div>

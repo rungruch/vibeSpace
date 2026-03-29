@@ -11,7 +11,7 @@ import { format, parseISO } from "date-fns";
 
 interface FlightCardProps {
   flight: Flight & { id: string };
-  variant?: "default" | "compact" | "upcoming";
+  variant?: "default" | "compact";
 }
 
 function formatTime(isoString: string | undefined): string {

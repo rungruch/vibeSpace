@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, X, Plane, AlertTriangle, CheckCircle2, XCircle, ArrowRightLeft, Clock } from "lucide-react";
+import { Bell, X, Plane, CheckCircle2, XCircle, ArrowRightLeft, Clock } from "lucide-react";
 import { FlightNotification } from "@/types/flight";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, writeBatch, limit, getDocs, deleteDoc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, writeBatch, limit } from "firebase/firestore";
 
 const NOTIFICATION_ICONS: Record<string, React.ReactNode> = {
   status_change: <ArrowRightLeft className="w-4 h-4" />,

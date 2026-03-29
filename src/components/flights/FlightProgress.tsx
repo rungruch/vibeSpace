@@ -27,13 +27,14 @@ export function FlightProgress({ flight, compact = false }: FlightProgressProps)
       }
       case "landed": return 95;
       case "arrived": return 100;
+      case "delayed": return 5;
       case "cancelled": return 0;
       default: return 0;
     }
   };
 
   const progress = getProgress();
-  const isActive = ["boarding", "departed", "in_air"].includes(flight.status);
+  const isActive = ["boarding", "departed", "in_air", "delayed"].includes(flight.status);
 
   if (compact) {
     return (
