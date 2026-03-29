@@ -20,6 +20,7 @@ export interface AirportInfo {
   terminal?: string;
   gate?: string;
   baggageClaim?: string;
+  location?: { lat: number; lon: number };
 }
 
 export interface AirlineInfo {

@@ -7,6 +7,7 @@ import { doc, onSnapshot, deleteDoc, updateDoc } from "firebase/firestore";
 import { Flight } from "@/types/flight";
 import { FlightStatusBadge } from "@/components/flights/FlightStatusBadge";
 import { FlightProgress } from "@/components/flights/FlightProgress";
+import { FlightMap } from "@/components/flights/FlightMap";
 import { NotificationBell } from "@/components/flights/NotificationBell";
 import { AppSwitcher } from "@/components/ui/AppSwitcher";
 import { Button } from "@/components/ui/Button";
@@ -240,8 +241,13 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
           </Card>
         </motion.div>
 
-        {/* Times card */}
+        {/* Flight Map */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <FlightMap flight={flight} />
+        </motion.div>
+
+        {/* Times card */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
             <div className="p-5">
               <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">

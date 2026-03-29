@@ -49,6 +49,10 @@ export async function POST(request: NextRequest) {
                   estimated: apiData.departure.revisedTime?.utc || flight.departure.times.estimated,
                   actual: apiData.departure.actualTime?.utc || flight.departure.times.actual,
                 },
+                location: apiData.departure?.airport?.location?.lat ? {
+                  lat: apiData.departure.airport.location.lat,
+                  lon: apiData.departure.airport.location.lon,
+                } : flight.departure.location,
               };
             }
 
@@ -64,6 +68,10 @@ export async function POST(request: NextRequest) {
                   estimated: apiData.arrival.revisedTime?.utc || flight.arrival.times.estimated,
                   actual: apiData.arrival.actualTime?.utc || flight.arrival.times.actual,
                 },
+                location: apiData.arrival?.airport?.location?.lat ? {
+                  lat: apiData.arrival.airport.location.lat,
+                  lon: apiData.arrival.airport.location.lon,
+                } : flight.arrival.location,
               };
             }
 

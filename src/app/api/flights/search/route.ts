@@ -58,6 +58,10 @@ export async function GET(request: NextRequest) {
           country: apiData.departure?.airport?.countryCode || "",
           terminal: apiData.departure?.terminal || undefined,
           gate: apiData.departure?.gate || undefined,
+          location: apiData.departure?.airport?.location?.lat ? {
+            lat: apiData.departure.airport.location.lat,
+            lon: apiData.departure.airport.location.lon,
+          } : undefined,
           times: {
             scheduled: apiData.departure?.scheduledTime?.utc || `${date}T00:00:00Z`,
             estimated: apiData.departure?.revisedTime?.utc || undefined,
@@ -72,6 +76,10 @@ export async function GET(request: NextRequest) {
           terminal: apiData.arrival?.terminal || undefined,
           gate: apiData.arrival?.gate || undefined,
           baggageClaim: apiData.arrival?.baggageBelt || undefined,
+          location: apiData.arrival?.airport?.location?.lat ? {
+            lat: apiData.arrival.airport.location.lat,
+            lon: apiData.arrival.airport.location.lon,
+          } : undefined,
           times: {
             scheduled: apiData.arrival?.scheduledTime?.utc || `${date}T00:00:00Z`,
             estimated: apiData.arrival?.revisedTime?.utc || undefined,
