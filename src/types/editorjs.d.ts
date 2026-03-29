@@ -8,3 +8,4 @@ declare module '@editorjs/image';
 declare module '@editorjs/paragraph';
 declare module '@editorjs/code';
 declare module '@editorjs/editorjs';
+declare module 'survey-core/themes';
