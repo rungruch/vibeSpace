@@ -54,7 +54,6 @@ export default function FlightsPage() {
   useFlightNotifications({
     flights,
     enabled: !!user,
-    refreshIntervalMs: 60000,
   });
 
   // Split flights into upcoming and past

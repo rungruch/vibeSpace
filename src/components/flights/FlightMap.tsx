@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { Map, Marker, Source, Layer } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Flight } from "@/types/flight";
-import { MapPin } from "lucide-react";
+import { MapPin, Plane } from "lucide-react";
 import { useTheme } from "next-themes";
 import greatCircle from "@turf/great-circle";
 import { point } from "@turf/helpers";
@@ -113,6 +113,42 @@ export function FlightMap({ flight }: FlightMapProps) {
             <div className={`w-3 h-3 rounded-full border-2 border-white dark:border-slate-800 ${isActive ? "bg-sky-500 shadow-[0_0_10px_rgba(14,165,233,0.8)]" : "bg-slate-400 dark:bg-slate-500"}`} />
           </div>
         </Marker>
+
+        {flight.status === "in_air" && flight.liveLocation && (
+          <Marker
+            longitude={flight.liveLocation.lon}
+            latitude={flight.liveLocation.lat}
+            anchor="center"
+          >
+            <div className="group relative flex items-center justify-center">
+              <div
+                className="w-9 h-9 rounded-full bg-sky-500 shadow-lg shadow-sky-500/50 flex items-center justify-center ring-2 ring-white dark:ring-slate-900 cursor-pointer"
+                style={{ transform: `rotate(${flight.liveLocation.heading ?? 0}deg)` }}
+              >
+                <Plane className="w-4 h-4 text-white" />
+              </div>
+              {(flight.liveLocation.altitude != null || flight.liveLocation.groundSpeed != null) && (
+                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center pointer-events-none z-10">
+                  <div className="bg-slate-900 dark:bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-xl whitespace-nowrap space-y-0.5">
+                    {flight.liveLocation.altitude != null && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-slate-400">Alt</span>
+                        <span className="font-semibold">{Math.round(flight.liveLocation.altitude).toLocaleString()} ft</span>
+                      </div>
+                    )}
+                    {flight.liveLocation.groundSpeed != null && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-slate-400">Spd</span>
+                        <span className="font-semibold">{Math.round(flight.liveLocation.groundSpeed)} kts</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="w-2 h-2 bg-slate-900 dark:bg-slate-800 rotate-45 -mt-1" />
+                </div>
+              )}
+            </div>
+          </Marker>
+        )}
       </Map>
     </div>
   );

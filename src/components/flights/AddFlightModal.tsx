@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { collection, addDoc } from "firebase/firestore";
@@ -30,6 +30,46 @@ export function AddFlightModal({ isOpen, onClose }: AddFlightModalProps) {
   const [saved, setSaved] = useState(false);
   const [result, setResult] = useState<FlightSearchResult | null>(null);
   const [error, setError] = useState("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Autocomplete temporarily disabled
+  //   useEffect(() => {
+  //   if (debounceRef.current) clearTimeout(debounceRef.current);
+
+  //   const term = flightNumber.trim();
+  //   if (!term || term.length < 2 || !user) {
+  //     setSuggestions([]);
+  //     setShowSuggestions(false);
+  //     return;
+  //   }
+
+  //   debounceRef.current = setTimeout(async () => {
+  //     try {
+  //       setLoadingSuggestions(true);
+  //       const token = await user.getIdToken();
+  //       const res = await fetch(`/api/flights/autocomplete?term=${encodeURIComponent(term)}`, {
+  //         headers: { Authorization: `Bearer ${token}` },
+  //       });
+  //       if (res.ok) {
+  //         const data = await res.json();
+  //         setSuggestions(data.suggestions ?? []);
+  //         setShowSuggestions((data.suggestions?.length ?? 0) > 0);
+  //       }
+  //     } catch {
+  //       // silently ignore autocomplete errors
+  //     } finally {
+  //       setLoadingSuggestions(false);
+  //     }
+  //   }, 300);
+
+  //   return () => {
+  //     if (debounceRef.current) clearTimeout(debounceRef.current);
+  //   };
+  // }, [flightNumber, user]);
+  // useEffect(() => { ... }, [flightNumber, user]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +117,8 @@ export function AddFlightModal({ isOpen, onClose }: AddFlightModalProps) {
       setResult(null);
       setSaved(false);
       setError("");
+      setSuggestions([]);
+      setShowSuggestions(false);
     }, 300);
   };
 
@@ -145,7 +187,7 @@ export function AddFlightModal({ isOpen, onClose }: AddFlightModalProps) {
               fixed bottom-0 left-0 right-0 sm:relative sm:bottom-auto sm:w-full sm:max-w-2xl
               flex flex-col bg-slate-50 dark:bg-slate-950 rounded-t-3xl sm:rounded-3xl
               shadow-2xl sm:shadow-[0_0_40px_-10px_rgba(0,0,0,0.3)] 
-              max-h-[85vh] sm:max-h-[90vh] overflow-hidden
+              max-h-[85vh] sm:max-h-[90vh]
             "
           >
             {/* Header / Drag handle area */}
@@ -172,23 +214,62 @@ export function AddFlightModal({ isOpen, onClose }: AddFlightModalProps) {
             {/* Scrollable Form Content */}
             <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 custom-scrollbar pb-10">
               {/* Search form */}
-              <Card className="bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-                <div className="h-1.5 w-full bg-gradient-to-r from-sky-500 to-cyan-400" />
+              <Card className="bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="h-1.5 w-full bg-gradient-to-r from-sky-500 to-cyan-400 rounded-t-xl" />
                 <div className="p-5 sm:p-6">
                   <form onSubmit={handleSearch} className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                           Flight Number
+                          {loadingSuggestions && <Loader2 className="inline w-3 h-3 ml-1.5 animate-spin text-slate-400" />}
                         </label>
-                        <Input
-                          type="text"
-                          value={flightNumber}
-                          onChange={(e) => setFlightNumber(e.target.value.toUpperCase())}
-                          placeholder="e.g. TG925"
-                          className="h-12 text-lg font-mono tracking-wider bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl"
-                          required
-                        />
+                        <div className="relative">
+                          <Input
+                            type="text"
+                            value={flightNumber}
+                            onChange={(e) => {
+                              const val = e.target.value.toUpperCase();
+                              setFlightNumber(val);
+                              if (!val.trim()) {
+                                setSuggestions([]);
+                                setShowSuggestions(false);
+                              }
+                            }}
+                            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                            onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                            placeholder="e.g. TG925"
+                            className="h-12 text-lg font-mono tracking-wider bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl"
+                            required
+                          />
+                          <AnimatePresence>
+                            {showSuggestions && suggestions.length > 0 && (
+                              <motion.ul
+                                initial={{ opacity: 0, y: -4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -4 }}
+                                transition={{ duration: 0.12 }}
+                                className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-[200] overflow-hidden max-h-48 overflow-y-auto"
+                              >
+                                {suggestions.map((s) => (
+                                  <li key={s}>
+                                    <button
+                                      type="button"
+                                      className="w-full text-left px-4 py-2.5 text-sm font-mono tracking-wider text-slate-800 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-sky-900/20 hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        setFlightNumber(s);
+                                        setShowSuggestions(false);
+                                      }}
+                                    >
+                                      {s}
+                                    </button>
+                                  </li>
+                                ))}
+                              </motion.ul>
+                            )}
+                          </AnimatePresence>
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">

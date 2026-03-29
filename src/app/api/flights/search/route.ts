@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
   if (apiKey) {
     try {
       const response = await fetch(
-        `https://aerodatabox.p.rapidapi.com/flights/number/${encodeURIComponent(flightNumber)}/${safeDate}`,
+        `https://aerodatabox.p.rapidapi.com/flights/number/${encodeURIComponent(flightNumber)}/${safeDate}?withAircraftImage=true&withLocation=true`,
         {
           headers: {
             "x-rapidapi-key": apiKey,
@@ -111,8 +111,18 @@ export async function GET(request: NextRequest) {
           ? {
             model: apiData.aircraft.model || undefined,
             registration: apiData.aircraft.reg || undefined,
+            iataCode: apiData.aircraft.iataCode || undefined,
+            imageUrl: apiData.aircraft.image?.url || undefined,
           }
           : undefined,
+        liveLocation: apiData.location ? {
+          lat: apiData.location.lat,
+          lon: apiData.location.lon,
+          altitude: apiData.location.alt ?? undefined,
+          groundSpeed: apiData.location.groundSpeed ?? undefined,
+          heading: apiData.location.heading ?? undefined,
+          updatedAt: apiData.location.lastUpdated ?? undefined,
+        } : undefined,
         duration: calculateFlightDuration(
           apiData.departure?.scheduledTime?.utc,
           apiData.arrival?.scheduledTime?.utc,

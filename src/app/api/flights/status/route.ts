@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     if (apiKey) {
       try {
         const response = await fetch(
-          `https://aerodatabox.p.rapidapi.com/flights/number/${encodeURIComponent(flight.flightNumber)}/${safeDate}`,
+          `https://aerodatabox.p.rapidapi.com/flights/number/${encodeURIComponent(flight.flightNumber)}/${safeDate}?withAircraftImage=true&withLocation=true`,
           {
             headers: {
               "x-rapidapi-key": apiKey,
@@ -99,7 +99,23 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
           updated: true,
-          changes: updatedFlight,
+          changes: {
+            ...updatedFlight,
+            liveLocation: apiData.location ? {
+              lat: apiData.location.lat,
+              lon: apiData.location.lon,
+              altitude: apiData.location.alt ?? undefined,
+              groundSpeed: apiData.location.groundSpeed ?? undefined,
+              heading: apiData.location.heading ?? undefined,
+              updatedAt: apiData.location.lastUpdated ?? undefined,
+            } : (flight.liveLocation ?? null),
+            ...(apiData.aircraft?.image?.url ? {
+              aircraft: {
+                ...(updatedFlight.aircraft || flight.aircraft),
+                imageUrl: apiData.aircraft.image.url,
+              }
+            } : {}),
+          },
           previousStatus: flight.status,
           newStatus: updatedFlight.status,
         });

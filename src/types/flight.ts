@@ -39,6 +39,16 @@ export interface AircraftInfo {
   model?: string;
   registration?: string;
   iataCode?: string;
+  imageUrl?: string;
+}
+
+export interface LiveLocation {
+  lat: number;
+  lon: number;
+  altitude?: number;       // feet
+  groundSpeed?: number;   // knots
+  heading?: number;       // degrees
+  updatedAt?: string;     // ISO
 }
 
 export interface Flight {
@@ -50,6 +60,7 @@ export interface Flight {
   arrival: AirportInfo & { times: FlightTimes };
   status: FlightStatus;
   aircraft?: AircraftInfo;
+  liveLocation?: LiveLocation;
   duration?: number; // minutes
   lastApiUpdate?: string; // ISO string
   notes?: string;

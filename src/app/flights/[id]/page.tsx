@@ -91,15 +91,6 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
     return () => unsubscribe();
   }, [user, id]);
 
-  useEffect(() => {
-    if (!flight || !user) return;
-    const isActive = ["scheduled", "boarding", "departed", "in_air", "delayed"].includes(flight.status);
-    if (!isActive) return;
-
-    const interval = setInterval(() => refreshStatus(), 60000);
-    return () => clearInterval(interval);
-  }, [flight, user, refreshStatus]);
-
   const handleDelete = async () => {
     if (!user || !flight) return;
 
@@ -222,8 +213,10 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
               {/* Airline & status */}
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${accentGradient} flex items-center justify-center shadow-sm`}>
-                    <Plane className="w-6 h-6 text-white" />
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${accentGradient} flex items-center justify-center shadow-sm overflow-hidden shrink-0`}>
+                    {flight.aircraft?.imageUrl
+                      ? <img src={flight.aircraft.imageUrl} alt={flight.aircraft.model || "Aircraft"} className="w-full h-full object-cover" />
+                      : <Plane className="w-6 h-6 text-white" />}
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{flight.flightNumber}</h2>
@@ -402,8 +395,10 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
                   <Plane className="w-4 h-4" /> Aircraft
                 </h3>
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center">
-                    <Plane className="w-7 h-7 text-slate-400 dark:text-slate-500" />
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center overflow-hidden shrink-0">
+                    {flight.aircraft.imageUrl
+                      ? <img src={flight.aircraft.imageUrl} alt={flight.aircraft.model || "Aircraft"} className="w-full h-full object-cover" />
+                      : <Plane className="w-7 h-7 text-slate-400 dark:text-slate-500" />}
                   </div>
                   <div>
                     <p className="font-semibold text-slate-900 dark:text-white">{flight.aircraft.model}</p>

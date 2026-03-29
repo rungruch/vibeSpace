@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
+import { differenceInMinutes, parseISO } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, addDoc, collection } from "firebase/firestore";
@@ -101,32 +102,76 @@ function detectChanges(
 interface UseFlightNotificationsProps {
   flights: (Flight & { id: string })[];
   enabled?: boolean;
-  refreshIntervalMs?: number;
+}
+
+// Returns the polling interval in ms for a given flight, or null to skip entirely.
+function getFlightIntervalMs(flight: Flight): number | null {
+  // Cancelled / diverted → never poll again
+  if (["cancelled", "diverted"].includes(flight.status)) return null;
+
+  // Arrived / landed → stop after 2 hours from arrival
+  if (["arrived", "landed"].includes(flight.status)) {
+    const arrivalTime =
+      flight.arrival.times.actual ??
+      flight.arrival.times.estimated ??
+      flight.arrival.times.scheduled;
+    if (arrivalTime) {
+      const minsAgo = differenceInMinutes(new Date(), parseISO(arrivalTime));
+      if (minsAgo >= 120) return null;
+    }
+    return 20 * 60_000; // recently arrived — one last check in 20 min
+  }
+
+  // In air or post-takeoff phases → 20 min (nobody watches mid-flight)
+  if (["in_air", "departed", "boarding"].includes(flight.status)) {
+    return 20 * 60_000;
+  }
+
+  // Scheduled / delayed → adaptive based on time until departure
+  if (flight.departure.times.scheduled) {
+    const minsUntil = differenceInMinutes(parseISO(flight.departure.times.scheduled), new Date());
+    if (minsUntil > 1440) return 180 * 60_000; // > 24 hr → 3 hr
+    if (minsUntil > 360) return 60 * 60_000;  // > 6 hr  → 60 min
+    if (minsUntil > 180) return 10 * 60_000;  // > 3 hr  → 10 min
+    if (minsUntil >  60) return  4 * 60_000;  // > 1 hr  →  4 min
+    return 3 * 60_000;                             // ≤ 1 hr  →  3 min (imminent)
+  }
+
+  return 5 * 60_000; // fallback
 }
 
 export function useFlightNotifications({
   flights,
   enabled = true,
-  refreshIntervalMs = 60000, // 1 minute
 }: UseFlightNotificationsProps) {
   const { user } = useAuth();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const flightsRef = useRef(flights);
+  const lastCheckedRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     flightsRef.current = flights;
   }, [flights]);
 
   const checkForUpdates = useCallback(async () => {
+    // Skip when tab is not visible — saves units on background tabs
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+
     const currentFlights = flightsRef.current;
     if (!user || !enabled || currentFlights.length === 0) return;
 
-    // Only check upcoming/active flights
-    const activeFlights = currentFlights.filter((f) =>
-      ["scheduled", "boarding", "departed", "in_air", "delayed"].includes(f.status)
-    );
+    const now = Date.now();
+    const lastChecked = lastCheckedRef.current;
 
-    for (const flight of activeFlights) {
+    for (const flight of currentFlights) {
+      const intervalMs = getFlightIntervalMs(flight);
+      if (intervalMs === null) continue; // this flight is done
+
+      const lastCheck = lastChecked.get(flight.id) ?? 0;
+      if (now - lastCheck < intervalMs) continue; // not time yet for this flight
+
+      // Mark before fetch to prevent double-firing if checkForUpdates overlaps
+      lastChecked.set(flight.id, now);
       try {
         const token = await user.getIdToken();
         const response = await fetch("/api/flights/status", {
@@ -178,13 +223,14 @@ export function useFlightNotifications({
     const timeout = setTimeout(checkForUpdates, 5000); // Delay initial check by 5s
 
     // Set up interval
-    intervalRef.current = setInterval(checkForUpdates, refreshIntervalMs);
+    // Tick every 30 seconds; per-flight intervals are enforced inside checkForUpdates
+    intervalRef.current = setInterval(checkForUpdates, 30_000);
 
     return () => {
       clearTimeout(timeout);
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [checkForUpdates, enabled, refreshIntervalMs, user]);
+  }, [checkForUpdates, enabled, user]);
 
   return { checkForUpdates };
 }
